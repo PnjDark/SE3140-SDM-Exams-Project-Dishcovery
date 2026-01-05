@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import './Auth.css';
 
 const Login = () => {
@@ -8,8 +9,20 @@ const Login = () => {
     password: ''
   });
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const { isAuthenticated, user } = useAuth();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const redirectPath = location.state?.from || 
+                         (user.role === 'owner' ? '/dashboard/owner' : '/dashboard');
+      navigate(redirectPath, { replace: true });
+    }
+  }, [isAuthenticated, user, navigate, location]);
 
   const handleChange = (e) => {
     setFormData({
@@ -23,6 +36,7 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccess('');
 
     try {
       const response = await fetch('/api/auth/login', {
@@ -57,6 +71,30 @@ const Login = () => {
     }
   };
 
+  // const result = await login(formData.email, formData.password);
+
+  //   if (result.success) {
+  //     setSuccess('Login successful! Redirecting...');
+  //     // The redirect will happen automatically via the useEffect above
+  //   } else {
+  //     setError(result.error || 'Login failed');
+  //   }
+    
+  //   setLoading(false);
+  // };
+
+  // Show loading while checking auth
+  if (loading && !error && !success) {
+    return (
+      <div className="auth-container">
+        <div className="auth-card">
+          <div className="loading-spinner"></div>
+          <p>Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="auth-container">
       <div className="auth-card">
@@ -64,6 +102,12 @@ const Login = () => {
           <h1>Welcome Back</h1>
           <p>Sign in to your Dishcovery account</p>
         </div>
+
+        {success && (
+          <div className="alert alert-success">
+            {success}
+          </div>
+        )}
 
         {error && (
           <div className="alert alert-error">
@@ -95,6 +139,7 @@ const Login = () => {
               onChange={handleChange}
               placeholder="••••••••"
               required
+              disabled={loading}
             />
           </div>
 

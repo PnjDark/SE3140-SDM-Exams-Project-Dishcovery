@@ -11,18 +11,18 @@ const Navbar = () => {
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   const navLinks = [
-    { path: '/', label: 'Home', icon: '🏠' },
-    { path: '/restaurants', label: 'Restaurants', icon: '🍽️' },
+    { path: '/', label: 'Home' },
+    { path: '/restaurants', label: 'Restaurants'},
   ];
 
   const userLinks = isOwner
     ? [
-        { path: '/dashboard/owner', label: 'Owner Dashboard', icon: '📊' },
-        { path: '/profile', label: 'Profile', icon: '👤' },
+        { path: '/dashboard/owner', label: 'Owner Dashboard'},
+        { path: '/profile', label: 'Profile'},
       ]
     : [
-        { path: '/dashboard', label: 'Dashboard', icon: '📊' },
-        { path: '/profile', label: 'Profile', icon: '👤' },
+        { path: '/dashboard', label: 'Dashboard'},
+        { path: '/profile', label: 'Profile'},
       ];
 
   const isActive = (path) => {
@@ -31,8 +31,16 @@ const Navbar = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/');
+    // navigate('/');
     setShowUserMenu(false);
+  };
+
+    const handleLogin = () => {
+    // Save current path for redirect after login
+    if (location.pathname !== '/login' && location.pathname !== '/register') {
+      localStorage.setItem('redirectAfterLogin', location.pathname);
+    }
+    navigate('/login');
   };
 
   return (
@@ -40,7 +48,6 @@ const Navbar = () => {
       <div className="nav-container">
         {/* Logo */}
         <Link to="/" className="nav-logo">
-          <span className="logo-icon">🍽️</span>
           <span className="logo-text">Dishcovery</span>
         </Link>
 
@@ -52,7 +59,6 @@ const Navbar = () => {
               to={link.path}
               className={`nav-link ${isActive(link.path) ? 'active' : ''}`}
             >
-              <span className="nav-icon">{link.icon}</span>
               {link.label}
             </Link>
           ))}
@@ -89,8 +95,8 @@ const Navbar = () => {
                       )}
                     </div>
                     <div className="dropdown-user-info">
-                      <strong>{user.name}</strong>
-                      <small>{user.email}</small>
+                      <strong className="info-item">{user.name}</strong>
+                      <small className="info-item">{user.email}</small>
                       <span className="user-role">
                         {isOwner ? 'Restaurant Owner' : 'Food Lover'}
                       </span>
@@ -122,12 +128,12 @@ const Navbar = () => {
             </div>
           ) : (
             <>
-              <Link to="/login" className="nav-link">
-                <span className="nav-icon">🔐</span>
+              <button onClick={handleLogin} className="nav-link btn-login">
+                {/* <span className="nav-icon">🔐</span> */}
                 Sign In
-              </Link>
+              </button>
               <Link to="/register" className="nav-link btn-register">
-                <span className="nav-icon">📝</span>
+                {/* <span className="nav-icon">📝</span> */}
                 Sign Up
               </Link>
             </>
@@ -178,10 +184,10 @@ const Navbar = () => {
               </>
             ) : (
               <>
-                <Link to="/login" className="mobile-nav-link">
+                <button onClick={handleLogin} className="mobile-nav-link">
                   <span className="nav-icon">🔐</span>
                   Sign In
-                </Link>
+                </button>
                 <Link to="/register" className="mobile-nav-link btn-register">
                   <span className="nav-icon">📝</span>
                   Sign Up

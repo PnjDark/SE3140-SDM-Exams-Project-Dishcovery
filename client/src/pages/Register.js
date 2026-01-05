@@ -67,11 +67,13 @@ const Register = () => {
         localStorage.setItem('user', JSON.stringify(data.user));
         
         // Redirect based on role
+        setTimeout(() => {
         if (data.user.role === 'owner') {
           navigate('/dashboard/owner');
         } else {
           navigate('/dashboard');
         }
+        }, 1500);
       } else {
         setError(data.error || 'Registration failed');
       }

@@ -17,7 +17,10 @@ const ProtectedRoute = ({ children, requireOwner = false }) => {
   const { user, loading, isOwner } = useAuth();
 
   if (loading) {
-    return <div className="loading">Loading...</div>;
+    return <div className="loading-screen">
+        <div className="spinner"></div>
+        <p>Loading...</p>
+      </div>;
   }
 
   if (!user) {
@@ -31,6 +34,30 @@ const ProtectedRoute = ({ children, requireOwner = false }) => {
   return children;
 };
 
+// Public Only Route (for login/register when already logged in)
+const PublicOnlyRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="loading-screen">
+        <div className="spinner"></div>
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
+  if (user) {
+    // Redirect to appropriate dashboard based on role
+    if (user.role === 'owner') {
+      return <Navigate to="/dashboard/owner" replace />;
+    }
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+};
+
 const AppRoutes = () => {
   return (
     <Routes>
@@ -38,8 +65,18 @@ const AppRoutes = () => {
       <Route path="/" element={<Home />} />
       <Route path="/restaurants" element={<Restaurants />} />
       <Route path="/restaurants/:id" element={<RestaurantDetails />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+      
+      {/* Auth Routes - Only for non-logged in users */}
+      <Route path="/login" element={
+        <PublicOnlyRoute>
+          <Login />
+        </PublicOnlyRoute>
+      } />
+      <Route path="/register" element={
+        <PublicOnlyRoute>
+          <Register />
+        </PublicOnlyRoute>
+      } />
       
       {/* Protected Routes */}
       <Route path="/dashboard" element={
@@ -61,7 +98,7 @@ const AppRoutes = () => {
       } />
       
       {/* Fallback */}
-      <Route path="*" element={<Navigate to="/" />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 };
@@ -76,7 +113,7 @@ function App() {
             <AppRoutes />
           </main>
           <footer className="footer">
-            <p>Dishcovery © 2024 - Find your next favorite meal</p>
+            <p>Dishcovery © 2026 - Find your next favorite meal</p>
           </footer>
         </div>
       </Router>

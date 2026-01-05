@@ -1,4 +1,5 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+// import { redirect } from 'react-router-dom';
 
 const AuthContext = createContext();
 
@@ -11,18 +12,27 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(null);
 
-  useEffect(() => {
-    // Check for saved token and user on mount
+   // Initialize auth from localStorage
+  const initializeAuth = useCallback(() => {
     const savedToken = localStorage.getItem('token');
     const savedUser = localStorage.getItem('user');
     
     if (savedToken && savedUser) {
-      setToken(savedToken);
-      setUser(JSON.parse(savedUser));
+      try {
+        setToken(savedToken);
+        setUser(JSON.parse(savedUser));
+      } catch (error) {
+        console.error('Error parsing saved user:', error);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
     }
-    
     setLoading(false);
   }, []);
+
+  useEffect(() => {
+    initializeAuth();
+  }, [initializeAuth]);
 
   const login = async (email, password) => {
     try {
@@ -41,7 +51,13 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('user', JSON.stringify(data.user));
         setToken(data.token);
         setUser(data.user);
-        return { success: true, user: data.user };
+
+        // Clear any saved redirect path
+        localStorage.removeItem('redirectAfterLogin');
+
+        return {  success: true, 
+                  user: data.user,
+                  redirectTo: data.user.role === 'owner' ? '/dashboard/owner' : '/dashboard'};
       } else {
         return { success: false, error: data.error };
       }
@@ -69,7 +85,9 @@ export const AuthProvider = ({ children }) => {
         setUser(data.user);
         return { success: true, user: data.user };
       } else {
-        return { success: false, error: data.error };
+        return { success: false,
+                 error: data.error,
+                 redirectTo: data.user.role === 'owner' ? '/dashboard/owner' : '/dashboard'};
       }
     } catch (error) {
       return { success: false, error: 'Network error' };
@@ -77,10 +95,19 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    // Save current path for potential redirect after login
+    const currentPath = window.location.pathname;
+    if (currentPath !== '/login' && currentPath !== '/register') {
+      localStorage.setItem('redirectAfterLogin', currentPath);
+    }
+    
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setToken(null);
     setUser(null);
+    
+    // Redirect to home page
+    window.location.href = '/';
   };
 
   const updateProfile = async (profileData) => {
@@ -108,6 +135,21 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const getRedirectPath = () => {
+    // Check if there's a saved redirect path
+    const savedPath = localStorage.getItem('redirectAfterLogin');
+    if (savedPath) {
+      localStorage.removeItem('redirectAfterLogin');
+      return savedPath;
+    }
+    
+    // Default redirect based on role
+    if (user?.role === 'owner') {
+      return '/dashboard/owner';
+    }
+    return '/dashboard';
+  };
+
   const value = {
     user,
     token,
@@ -116,6 +158,7 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     updateProfile,
+    getRedirectPath,
     isAuthenticated: !!user,
     isOwner: user?.role === 'owner',
     isCustomer: user?.role === 'customer'
@@ -123,7 +166,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      {children}
+      {!loading && children}
     </AuthContext.Provider>
   );
 };

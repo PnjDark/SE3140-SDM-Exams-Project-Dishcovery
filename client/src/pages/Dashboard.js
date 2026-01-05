@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router-dom';
 import './Dashboard.css';
 
 const Dashboard = () => {
@@ -8,6 +10,7 @@ const Dashboard = () => {
     favoriteCount: 0,
     recentActivity: []
   });
+  const { user } = useAuth();
 
   const [loading, setLoading] = useState(true);
 
@@ -34,40 +37,55 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="dashboard-container">
+    <div className="dashboard-container dashboard">
       <header className="dashboard-header">
-        <h1>Dashboard</h1>
+        <h1>{user?.name}'s Dashboard</h1>
         <p>Welcome to Dishcovery</p>
       </header>
 
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-icon">🍽️</div>
-          <div className="stat-content">
-            <h3>Total Dishes</h3>
-            <p className="stat-number">{stats.totalDishes}</p>
+      <div className="dashboard-content">
+        <div className="dashboard-grid">
+          <div className="dashboard-card">
+            <div className="card-icon">⭐</div>
+            <h3>Your Reviews</h3>
+            <p>View and manage your restaurant reviews</p>
+            <Link to="/reviews" className="card-link">View Reviews →</Link>
+          </div>
+
+          <div className="dashboard-card">
+            <div className="card-icon">❤️</div>
+            <h3>Favorite Restaurants</h3>
+            <p>See restaurants you've followed and liked</p>
+            <Link to="/favorites" className="card-link">View Favorites →</Link>
+          </div>
+
+          <div className="dashboard-card">
+            <div className="card-icon">📝</div>
+            <h3>Recent Activity</h3>
+            <p>Check your recent interactions and updates</p>
+            <Link to="/activity" className="card-link">View Activity →</Link>
+          </div>
+
+          <div className="dashboard-card">
+            <div className="card-icon">⚙️</div>
+            <h3>Account Settings</h3>
+            <p>Update your profile and preferences</p>
+            <Link to="/profile" className="card-link">Go to Profile →</Link>
           </div>
         </div>
 
-        <div className="stat-card">
-          <div className="stat-icon">📖</div>
-          <div className="stat-content">
-            <h3>Recipes</h3>
-            <p className="stat-number">{stats.totalRecipes}</p>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-icon">❤️</div>
-          <div className="stat-content">
-            <h3>Favorites</h3>
-            <p className="stat-number">{stats.favoriteCount}</p>
+        <div className="dashboard-section">
+          <h2>Recommended For You</h2>
+          <p>Based on your preferences and history</p>
+          <div className="recommendations">
+            <p>Recommendations coming soon! Explore restaurants to get personalized suggestions.</p>
+            <Link to="/restaurants" className="btn-primary">Browse Restaurants</Link>
           </div>
         </div>
       </div>
 
-      <div className="dashboard-content">
-        <section className="recent-activity">
+      <div className="dashboard-section">
+        <section className="dashboard-stats">
           <h2>Recent Activity</h2>
           <div className="activity-list">
             {stats.recentActivity.length > 0 ? (
@@ -86,9 +104,9 @@ const Dashboard = () => {
         <section className="quick-actions">
           <h2>Quick Actions</h2>
           <div className="action-buttons">
-            <button className="action-btn primary">+ Add New Dish</button>
-            <button className="action-btn secondary">Browse Recipes</button>
-            <button className="action-btn secondary">My Favorites</button>
+            <button className="action-btn btn-primary">+ Add New Dish</button>
+            <button className="action-btn btn-primary">Browse Recipes</button>
+            <button className="action-btn btn-primary">My Favorites</button>
           </div>
         </section>
       </div>
