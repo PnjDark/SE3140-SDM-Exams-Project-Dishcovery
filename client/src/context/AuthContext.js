@@ -1,33 +1,40 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 // import { redirect } from 'react-router-dom';
 
+
 const AuthContext = createContext();
 
 export const useAuth = () => {
-  return useContext(AuthContext);
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 };
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(null);
+  const [error, setError] = useState(null);
 
    // Initialize auth from localStorage
   const initializeAuth = useCallback(() => {
-    const savedToken = localStorage.getItem('token');
-    const savedUser = localStorage.getItem('user');
-    
-    if (savedToken && savedUser) {
-      try {
+    try {
+      const savedToken = localStorage.getItem('token');
+      const savedUser = localStorage.getItem('user');
+      
+      if (savedToken && savedUser) {
         setToken(savedToken);
         setUser(JSON.parse(savedUser));
-      } catch (error) {
-        console.error('Error parsing saved user:', error);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
       }
+    } catch (error) {
+      console.error('Error initializing auth:', error);
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -59,10 +66,13 @@ export const AuthProvider = ({ children }) => {
                   user: data.user,
                   redirectTo: data.user.role === 'owner' ? '/dashboard/owner' : '/dashboard'};
       } else {
-        return { success: false, error: data.error };
+        setError(data.error || 'Login failed');
+        return { success: false, error: data.error || 'Login failed' };
       }
     } catch (error) {
-      return { success: false, error: 'Network error' };
+      const errorMsg = error.message || 'Network error';
+      setError(errorMsg);
+      return { success: false, error: errorMsg };
     }
   };
 
@@ -83,14 +93,20 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('user', JSON.stringify(data.user));
         setToken(data.token);
         setUser(data.user);
-        return { success: true, user: data.user };
+        
+        return { 
+          success: true, 
+          user: data.user,
+          redirectTo: data.user.role === 'owner' ? '/dashboard/owner' : '/dashboard'
+        };
       } else {
-        return { success: false,
-                 error: data.error,
-                 redirectTo: data.user.role === 'owner' ? '/dashboard/owner' : '/dashboard'};
+        setError(data.error || 'Registration failed');
+        return { success: false, error: data.error || 'Registration failed' };
       }
     } catch (error) {
-      return { success: false, error: 'Network error' };
+      const errorMsg = error.message || 'Network error';
+      setError(errorMsg);
+      return { success: false, error: errorMsg };
     }
   };
 
@@ -105,6 +121,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('user');
     setToken(null);
     setUser(null);
+    setError(null);
     
     // Redirect to home page
     window.location.href = '/';
@@ -128,10 +145,13 @@ export const AuthProvider = ({ children }) => {
         setUser(data.user);
         return { success: true, user: data.user };
       } else {
-        return { success: false, error: data.error };
+        setError(data.error || 'Profile update failed');
+        return { success: false, error: data.error || 'Profile update failed' };
       }
     } catch (error) {
-      return { success: false, error: 'Network error' };
+      const errorMsg = error.message || 'Network error';
+      setError(errorMsg);
+      return { success: false, error: errorMsg };
     }
   };
 
@@ -150,6 +170,10 @@ export const AuthProvider = ({ children }) => {
     return '/dashboard';
   };
 
+  const clearError = () => {
+    setError(null);
+  };
+
   const value = {
     user,
     token,
@@ -159,9 +183,11 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateProfile,
     getRedirectPath,
-    isAuthenticated: !!user,
+    error,
+    clearError,
+    isAuthenticated: !!user && !!token,
     isOwner: user?.role === 'owner',
-    isCustomer: user?.role === 'customer'
+    isCustomer: user?.role === 'customer' || !!user?.role
   };
 
   return (

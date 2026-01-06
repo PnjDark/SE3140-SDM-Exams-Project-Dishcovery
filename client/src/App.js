@@ -1,10 +1,14 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { RestaurantProvider } from './context/RestaurantContext';
+import { DishProvider } from './context/DishContext';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Restaurants from './pages/Restaurants';
 import RestaurantDetails from './pages/RestaurantDetails';
+import DishList from './pages/DishList';
+import DishDetail from './pages/DishDetail';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
