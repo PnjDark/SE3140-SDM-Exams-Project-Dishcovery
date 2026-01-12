@@ -15,6 +15,10 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/restaurants', restaurantRoutes);
 app.use('/api/owner', authenticateToken, ownerRoutes);
+app.use('/api/owner', ownerRoutes); // Owner routes protected by authenticateToken middleware
+app.use('/api/auth', authRoutes); // Auth routes
+app.use('/api/restaurants', restaurantRoutes); // Restaurant routes
+app.use('/api/owner', ownerRoutes); // Owner routes
 
 // Protected Test Route
 app.get('/api/protected', authenticateToken, (req, res) => {
@@ -24,6 +28,126 @@ app.get('/api/protected', authenticateToken, (req, res) => {
     user: req.user
   });
 });
+
+app.get('/api/public', (req, res) => {
+  res.json({
+    success: true,
+    message: 'This is a public route'
+  });
+});
+
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    error: 'Endpoint not found'
+  });
+});
+
+app.get('/api/restaurants', (req, res) => {
+  res.json({
+    success: true,
+    message: 'List of restaurants would be here'
+  });
+});
+
+app.get('/api/owner/dashboard', authenticateToken, (req, res) => {
+  if (req.user.role !== 'owner') {
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied'
+    });
+  }
+
+  res.json({
+    success: true,
+    message: `Welcome to the owner dashboard, ${req.user.name}`
+  });
+});
+
+app.get('/api/owner/restaurants', authenticateToken, (req, res) => {
+  if (req.user.role !== 'owner') {
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied'
+    });
+  }
+
+  res.json({
+    success: true,
+    message: `List of your restaurants, ${req.user.name}`
+  });
+});
+
+app.get('/api/owner/dishes', authenticateToken, (req, res) => {
+  if (req.user.role !== 'owner') {
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied'
+    });
+  }
+
+  res.json({
+    success: true,
+    message: `List of your dishes, ${req.user.name}`
+  });
+});
+
+app.get('/api/owner/orders', authenticateToken, (req, res) => {
+  if (req.user.role !== 'owner') {
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied'
+    });
+  }
+
+  res.json({
+    success: true,
+    message: `List of your orders, ${req.user.name}`
+  });
+});
+
+app.get('/api/owner/reports', authenticateToken, (req, res) => {
+  if (req.user.role !== 'owner') {
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied'
+    });
+  }
+
+  res.json({
+    success: true,
+    message: `Your reports, ${req.user.name}`
+  });
+});
+
+app.get('/api/owner/settings', authenticateToken, (req, res) => {
+  if (req.user.role !== 'owner') {
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied'
+    });
+  }
+
+  res.json({
+    success: true,
+    message: `Your settings, ${req.user.name}`
+  });
+});
+
+app.get('/api/owner/profile', authenticateToken, (req, res) => {
+  if (req.user.role !== 'owner') {
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied'
+    });
+  }
+
+  res.json({
+    success: true,
+    message: `Your profile, ${req.user.name}`
+  });
+});
+
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -42,7 +166,9 @@ app.get('/', (req, res) => {
     version: '1.0.0',
     endpoints: {
       restaurants: '/api/restaurants',
-      health: '/api/health'
+      health: '/api/health',
+      // Authentication: '/api/auth',
+      owner: '/api/owner'
     }
   });
 });
@@ -53,4 +179,5 @@ app.listen(port, () => {
   console.log(`📊 Health check: http://localhost:${port}/api/health`);
   console.log(`🍽️  Restaurants: http://localhost:${port}/api/restaurants`);
   console.log(`👨‍🍳 Owner routes: http://localhost:${port}/api/owner`);
+  console.log(`🔐 Auth routes: http://localhost:${port}/api/auth`);
 });

@@ -245,3 +245,4 @@ export const RestaurantProvider = ({ children }) => {
     </RestaurantContext.Provider>
   );
 };
+

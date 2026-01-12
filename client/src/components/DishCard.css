@@ -1,0 +1,178 @@
+/* Dish Card Component */
+.dish-card {
+  background: #f9f9f9;
+  border-radius: 10px;
+  padding: 20px;
+  border-left: 5px solid #3498db;
+  transition: all 0.3s ease;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.dish-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.dish-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 15px;
+}
+
+.dish-name {
+  font-size: 1.3rem;
+  color: #2c3e50;
+  margin: 0;
+  line-height: 1.4;
+  flex: 1;
+  margin-right: 10px;
+}
+
+.dish-price {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: #27ae60;
+  white-space: nowrap;
+}
+
+.dish-description {
+  color: #666;
+  line-height: 1.6;
+  margin-bottom: 15px;
+  font-size: 0.95rem;
+  flex-grow: 1;
+}
+
+.dish-meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 15px;
+}
+
+.category-tag,
+.dish-rating,
+.prep-time {
+  padding: 5px 12px;
+  border-radius: 15px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.category-tag {
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.dish-rating {
+  background: #fff3e0;
+  color: #f57c00;
+}
+
+.prep-time {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.dietary-tags {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 15px;
+}
+
+.dietary-tag {
+  padding: 5px 12px;
+  border-radius: 15px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.spicy-tag {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.dish-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 15px;
+  border-top: 1px solid #e0e0e0;
+  margin-top: auto;
+}
+
+.favorite-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+  color: #666;
+}
+
+.favorite-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.favorite-btn.active {
+  color: #ff4757;
+}
+
+.order-btn {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s;
+  font-size: 0.95rem;
+}
+
+.order-btn:hover {
+  background: #2980b9;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .dish-header {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .dish-name {
+    font-size: 1.2rem;
+  }
+  
+  .dish-price {
+    align-self: flex-start;
+  }
+  
+  .dish-footer {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+  
+  .favorite-btn {
+    align-self: flex-end;
+  }
+  
+  .order-btn {
+    width: 100%;
+  }
+}

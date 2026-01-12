@@ -88,17 +88,17 @@ const Dashboard = () => {
         <section className="dashboard-stats">
           <h2>Recent Activity</h2>
           <div className="activity-list">
-            {stats.recentActivity.length > 0 ? (
-              stats.recentActivity.map((activity, index) => (
-                <div key={index} className="activity-item">
-                  <span className="activity-time">{activity.time}</span>
-                  <span className="activity-description">{activity.description}</span>
-                </div>
-              ))
-            ) : (
-              <p className="no-activity">No recent activity</p>
-            )}
-          </div>
+  {stats?.recentActivity?.length > 0 ? (
+    stats.recentActivity.map((activity, index) => (
+      <div key={index} className="activity-item">
+        <span className="activity-time">{activity.time}</span>
+        <span className="activity-description">{activity.description}</span>
+      </div>
+    ))
+  ) : (
+    <p className="no-activity">No recent activity</p>
+  )}
+</div>
         </section>
 
         <section className="quick-actions">

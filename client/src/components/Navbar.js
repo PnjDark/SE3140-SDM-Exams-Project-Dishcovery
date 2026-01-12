@@ -78,14 +78,14 @@ const Navbar = () => {
                     </span>
                   )}
                 </div>
-                <span className="user-name">{user.name}</span>
-                <span className="dropdown-arrow">▼</span>
+                {/* <span className="user-name">{user.name}</span>
+                <span className="dropdown-arrow">▼</span> */}
               </button>
 
               {showUserMenu && (
                 <div className="user-dropdown">
                   <div className="dropdown-header">
-                    <div className="dropdown-avatar">
+                    {/* <div className="dropdown-avatar">
                       {user.avatar_url ? (
                         <img src={user.avatar_url} alt={user.name} />
                       ) : (
@@ -93,7 +93,7 @@ const Navbar = () => {
                           {user.name?.charAt(0).toUpperCase()}
                         </span>
                       )}
-                    </div>
+                    </div> */}
                     <div className="dropdown-user-info">
                       <strong className="info-item">{user.name}</strong>
                       <small className="info-item">{user.email}</small>

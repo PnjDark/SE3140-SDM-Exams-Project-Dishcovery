@@ -7,8 +7,8 @@ import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Restaurants from './pages/Restaurants';
 import RestaurantDetails from './pages/RestaurantDetails';
-import DishList from './pages/DishList';
-import DishDetail from './pages/DishDetail';
+// import DishList from './pages/DishList';
+// import DishDetail from './pages/DishDetail';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -110,6 +110,8 @@ const AppRoutes = () => {
 function App() {
   return (
     <AuthProvider>
+      <RestaurantProvider>
+        <DishProvider>
       <Router>
         <div className="App">
           <Navbar />
@@ -121,6 +123,8 @@ function App() {
           </footer>
         </div>
       </Router>
+      </DishProvider>
+      </RestaurantProvider>
     </AuthProvider>
   );
 }

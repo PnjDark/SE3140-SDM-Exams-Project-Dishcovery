@@ -5,14 +5,8 @@ const router = express.Router();
 const mysql = require('mysql2');
 require('dotenv').config();
 
-// Create database connection INSIDE this file to avoid circular dependency
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'dishcovery',
-  port: process.env.DB_PORT || 3306
-});
+const db = require('../db'); // Use centralized connection
+
 
 const promisePool = pool.promise();
 
