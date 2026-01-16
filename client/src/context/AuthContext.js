@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
-// import { redirect } from 'react-router-dom';
+import { redirect } from 'react-router-dom';
 
 
 const AuthContext = createContext();
@@ -169,6 +169,11 @@ export const AuthProvider = ({ children }) => {
     }
     return '/dashboard';
   };
+
+  useEffect(() => {
+ if(user) redirect("/dashboard");
+}, [user])
+
 
   const clearError = () => {
     setError(null);
