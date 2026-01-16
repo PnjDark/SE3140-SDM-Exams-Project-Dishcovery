@@ -1,25 +1,22 @@
 const express = require('express');
 const router = express.Router();
 
-// Import db directly in this file
-const mysql = require('mysql2');
-require('dotenv').config();
-
-const db = require('../db'); // Use centralized connection
-
-
-const promisePool = pool.promise();
+const db= require('../db'); // central connection
+const promisePool = db.promise();
 
 // GET all restaurants
 router.get('/', async (req, res) => {
   try {
-    const [rows] = await promisePool.execute('SELECT * FROM restaurants');
-    
+    const [rows] = await promisePool.execute(
+      'SELECT * FROM restaurants'
+    );
+
     res.json({
       success: true,
       count: rows.length,
       data: rows
     });
+
   } catch (error) {
     console.error('Database error:', error);
     res.status(500).json({
@@ -29,28 +26,29 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET single restaurant by ID
+// GET single restaurant
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+
     const [rows] = await promisePool.execute(
       'SELECT * FROM restaurants WHERE id = ?',
       [id]
     );
-    
-    if (rows.length === 0) {
+
+    if (!rows.length) {
       return res.status(404).json({
         success: false,
         error: 'Restaurant not found'
       });
     }
-    
+
     res.json({
       success: true,
       data: rows[0]
     });
+
   } catch (error) {
-    console.error('Database error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch restaurant'
@@ -58,22 +56,23 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// GET dishes for a restaurant
+// GET dishes
 router.get('/:id/dishes', async (req, res) => {
   try {
     const { id } = req.params;
+
     const [rows] = await promisePool.execute(
       'SELECT * FROM dishes WHERE restaurant_id = ?',
       [id]
     );
-    
+
     res.json({
       success: true,
       count: rows.length,
       data: rows
     });
+
   } catch (error) {
-    console.error('Database error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch dishes'
@@ -81,95 +80,73 @@ router.get('/:id/dishes', async (req, res) => {
   }
 });
 
-// GET home page statistics (SIMPLIFIED VERSION)
+// HOME STATS
 router.get('/stats/home', async (req, res) => {
   try {
-    // Get total restaurants count
-    const [restaurantCount] = await promisePool.execute('SELECT COUNT(*) as total FROM restaurants');
-    
-    // Get total reviews count
-    const [reviewCount] = await promisePool.execute('SELECT COUNT(*) as total FROM reviews');
-    
-    // Get average rating
-    const [avgRating] = await promisePool.execute('SELECT AVG(rating) as avg_rating FROM reviews');
-    
-    // Get top 3 restaurants (simplified - just get highest rated)
-    const [topRestaurants] = await promisePool.execute(`
-      SELECT * FROM restaurants 
-      ORDER BY rating DESC 
-      LIMIT 3
-    `);
-    
-    // Get unique cuisines
-    const [cuisines] = await promisePool.execute(`
-      SELECT DISTINCT cuisine 
-      FROM restaurants 
-      WHERE cuisine IS NOT NULL AND cuisine != ''
-      LIMIT 4
-    `);
-    
+
+    const [[restaurants]] = await promisePool.execute(
+      'SELECT COUNT(*) total FROM restaurants'
+    );
+
+    const [[reviews]] = await promisePool.execute(
+      'SELECT COUNT(*) total FROM reviews'
+    );
+
+    const [[rating]] = await promisePool.execute(
+      'SELECT AVG(rating) avg FROM reviews'
+    );
+
+    const [top] = await promisePool.execute(
+      'SELECT * FROM restaurants ORDER BY rating DESC LIMIT 3'
+    );
+
     res.json({
       success: true,
       data: {
-        totalRestaurants: restaurantCount[0].total || 0,
-        totalReviews: reviewCount[0].total || 0,
-        averageRating: avgRating[0].avg_rating ? parseFloat(avgRating[0].avg_rating).toFixed(1) : 0,
-        topRestaurants: topRestaurants.map(r => ({
-          ...r,
-          rating: r.rating ? parseFloat(r.rating).toFixed(1) : 0
-        })),
-        featuredCuisines: cuisines.map(c => c.cuisine).filter(Boolean)
+        totalRestaurants: restaurants.total,
+        totalReviews: reviews.total,
+        averageRating: rating.avg
+          ? rating.avg.toFixed(1)
+          : 0,
+        topRestaurants: top
       }
     });
+
   } catch (error) {
-    console.error('Error fetching home stats:', error);
+    console.error(error);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch home statistics'
+      error: 'Failed to fetch stats'
     });
   }
 });
 
-// POST add a review
+// ADD REVIEW
 router.post('/:id/reviews', async (req, res) => {
   try {
     const { id } = req.params;
     const { user_name, comment, rating } = req.body;
-    
-    // Validate
+
     if (!user_name || !rating) {
       return res.status(400).json({
         success: false,
-        error: 'Please provide user_name and rating'
+        error: 'user_name & rating required'
       });
     }
-    
-    // Check if restaurant exists
-    const [restaurant] = await promisePool.execute(
-      'SELECT id FROM restaurants WHERE id = ?',
-      [id]
-    );
-    
-    if (restaurant.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Restaurant not found'
-      });
-    }
-    
-    // Insert review
-    const [result] = await promisePool.execute(
-      'INSERT INTO reviews (restaurant_id, user_name, comment, rating) VALUES (?, ?, ?, ?)',
+
+    await promisePool.execute(
+      `INSERT INTO reviews 
+      (restaurant_id, user_name, comment, rating)
+      VALUES (?, ?, ?, ?)`,
       [id, user_name, comment, rating]
     );
-    
+
     res.status(201).json({
       success: true,
-      message: 'Review added successfully',
-      reviewId: result.insertId
+      message: 'Review added'
     });
+
   } catch (error) {
-    console.error('Database error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to add review'

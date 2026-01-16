@@ -1,4 +1,7 @@
 .react-router
 build
 node_modules
+.env
+server/node_modules
+client/node_modules
 README.md
