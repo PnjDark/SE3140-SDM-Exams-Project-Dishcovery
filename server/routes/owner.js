@@ -1,19 +1,21 @@
 const express = require('express');
 const router = express.Router();
-const mysql = require('mysql2');
 require('dotenv').config();
 const { authenticateToken } = require('./auth');
+const { 
+  isValidRestaurantName, 
+  isValidCuisine, 
+  isValidLocation,
+  isValidPriceRange
+} = require('../utils/validation');
+const { 
+  multiFieldValidationError,
+  forbiddenError,
+  notFoundError
+} = require('../utils/errorHandler');
 
 // Database connection
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'dishcovery',
-  port: process.env.DB_PORT || 3306
-});
-
-const promisePool = pool.promise();
+const promisePool = require('../db');
 
 // Middleware to check if user is owner
 const isOwner = (req, res, next) => {
@@ -70,29 +72,74 @@ router.post('/restaurants', authenticateToken, isOwner, async (req, res) => {
     const {
       name, cuisine, location, description,
       price_range, contact_phone, contact_email,
-      website, opening_hours, social_links
+      website, opening_hours, social_links, image_url
     } = req.body;
     
-    // Validation
-    if (!name || !cuisine || !location) {
-      return res.status(400).json({
-        success: false,
-        error: 'Name, cuisine, and location are required'
-      });
+    // Comprehensive validation
+    const errors = {};
+    
+    // Validate required fields
+    if (!name || !name.trim()) {
+      errors.name = 'Restaurant name is required';
+    } else if (!isValidRestaurantName(name)) {
+      errors.name = 'Restaurant name must be 3-100 characters';
     }
     
+    if (!cuisine || !cuisine.trim()) {
+      errors.cuisine = 'Cuisine type is required';
+    } else if (!isValidCuisine(cuisine)) {
+      errors.cuisine = 'Cuisine must be 2-50 characters';
+    }
+    
+    if (!location || !location.trim()) {
+      errors.location = 'Location is required';
+    } else if (!isValidLocation(location)) {
+      errors.location = 'Location must be 2-100 characters';
+    }
+    
+    // Validate optional fields
+    if (price_range !== undefined && !isValidPriceRange(price_range)) {
+      errors.price_range = 'Price range must be 1-5';
+    }
+    
+    if (contact_phone && contact_phone.trim().length > 20) {
+      errors.contact_phone = 'Phone number must be 20 characters or less';
+    }
+    
+    if (contact_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact_email)) {
+      errors.contact_email = 'Invalid email format';
+    }
+    
+    if (website && website.trim().length > 200) {
+      errors.website = 'Website URL must be 200 characters or less';
+    }
+    
+    // Return validation errors if any
+    if (Object.keys(errors).length > 0) {
+      return res.status(400).json(multiFieldValidationError(errors));
+    }
+    
+    // Create restaurant
     const [result] = await promisePool.execute(
       `INSERT INTO restaurants (
         name, cuisine, location, description, price_range,
         owner_id, contact_phone, contact_email, website,
-        opening_hours, social_links
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        opening_hours, social_links, image_url, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        name, cuisine, location, description || null,
-        price_range || 3, userId, contact_phone || null,
-        contact_email || null, website || null,
+        name.trim(),
+        cuisine.trim(),
+        location.trim(),
+        description ? description.trim() : null,
+        price_range || 3,
+        userId,
+        contact_phone ? contact_phone.trim() : null,
+        contact_email ? contact_email.trim() : null,
+        website ? website.trim() : null,
         opening_hours ? JSON.stringify(opening_hours) : null,
-        social_links ? JSON.stringify(social_links) : null
+        social_links ? JSON.stringify(social_links) : null,
+        image_url || null,
+        'pending'
       ]
     );
     
@@ -110,14 +157,33 @@ router.post('/restaurants', authenticateToken, isOwner, async (req, res) => {
     
     res.status(201).json({
       success: true,
-      message: 'Restaurant created successfully',
-      data: newRestaurant[0]
+      message: 'Restaurant created successfully and awaiting admin approval',
+      data: {
+        id: newRestaurant[0].id,
+        name: newRestaurant[0].name,
+        cuisine: newRestaurant[0].cuisine,
+        location: newRestaurant[0].location,
+        status: newRestaurant[0].status,
+        owner_id: newRestaurant[0].owner_id,
+        created_at: newRestaurant[0].created_at
+      }
     });
   } catch (error) {
     console.error('Error creating restaurant:', error);
-    res.status(500).json({
+    
+    // Handle duplicate name error
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({
+        success: false,
+        error: 'A restaurant with this name already exists',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    return res.status(500).json({
       success: false,
-      error: 'Failed to create restaurant'
+      error: 'Failed to create restaurant',
+      timestamp: new Date().toISOString()
     });
   }
 });

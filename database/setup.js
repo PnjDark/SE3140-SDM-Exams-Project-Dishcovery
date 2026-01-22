@@ -1,7 +1,9 @@
 const mysql = require('mysql2/promise');
 const fs = require('fs');
 const path = require('path');
-require('dotenv').config();
+
+// Load .env from server directory
+require('dotenv').config({ path: path.join(__dirname, '..', 'server', '.env') });
 
 class DatabaseSetup {
   constructor() {
@@ -28,7 +30,7 @@ class DatabaseSetup {
   async createDatabase() {
     try {
       await this.connection.execute(`CREATE DATABASE IF NOT EXISTS \`${this.dbName}\``);
-      await this.connection.execute(`USE \`${this.dbName}\``);
+      await this.connection.query(`USE \`${this.dbName}\``);
       console.log(`✅ Database '${this.dbName}' ready`);
     } catch (error) {
       console.error('❌ Failed to create database:', error.message);

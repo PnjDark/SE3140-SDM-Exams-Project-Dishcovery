@@ -2,6 +2,23 @@
 CREATE DATABASE IF NOT EXISTS dishcovery;
 USE dishcovery;
 
+-- Users table (must come first for foreign keys)
+CREATE TABLE users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    name VARCHAR(100),
+    role ENUM('customer', 'owner', 'admin') DEFAULT 'customer',
+    avatar_url VARCHAR(500),
+    bio TEXT,
+    location VARCHAR(100),
+    preferences JSON,
+    is_verified BOOLEAN DEFAULT false,
+    last_login TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
 -- Restaurants table
 CREATE TABLE restaurants (
     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -11,7 +28,17 @@ CREATE TABLE restaurants (
     location VARCHAR(100),
     price_range INT, -- 1-5 scale
     rating DECIMAL(3,2) DEFAULT 0.00,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    owner_id INT,
+    status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+    contact_phone VARCHAR(20),
+    contact_email VARCHAR(100),
+    website VARCHAR(200),
+    opening_hours JSON,
+    social_links JSON,
+    image_url VARCHAR(500),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
 -- Dishes table
@@ -32,20 +59,13 @@ CREATE TABLE dishes (
 CREATE TABLE reviews (
     id INT PRIMARY KEY AUTO_INCREMENT,
     restaurant_id INT NOT NULL,
+    user_id INT,
     user_name VARCHAR(50) NOT NULL,
     comment TEXT,
     rating INT CHECK (rating >= 1 AND rating <= 5),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE
-);
-
--- Users table (for future authentication)
-CREATE TABLE users (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    email VARCHAR(100) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    name VARCHAR(100),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
 -- Favorites table
@@ -57,18 +77,6 @@ CREATE TABLE favorites (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE
 );
-
--- 1. USERS TABLE (Updated)
-ALTER TABLE users 
-ADD COLUMN role ENUM('customer', 'owner', 'admin') DEFAULT 'customer',
-ADD COLUMN avatar_url VARCHAR(500),
-ADD COLUMN bio TEXT,
-ADD COLUMN location VARCHAR(100),
-ADD COLUMN preferences JSON,
-ADD COLUMN is_verified BOOLEAN DEFAULT false,
-ADD COLUMN last_login TIMESTAMP,
-ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
 
 -- 2. RESTAURANT OWNERSHIP TABLE
 CREATE TABLE IF NOT EXISTS restaurant_owners (

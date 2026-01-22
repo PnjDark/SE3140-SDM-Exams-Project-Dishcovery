@@ -7,18 +7,17 @@ import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Restaurants from './pages/Restaurants';
 import RestaurantDetails from './pages/RestaurantDetails';
-// import DishList from './pages/DishList';
-// import DishDetail from './pages/DishDetail';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import OwnerDashboard from './pages/owner/OwnerDashboard';
+import AdminDashboard from './pages/admin/AdminDashboard';
 import Profile from './pages/Profile';
 import './App.css';
 
 // Protected Route Component
-const ProtectedRoute = ({ children, requireOwner = false }) => {
-  const { user, loading, isOwner } = useAuth();
+const ProtectedRoute = ({ children, requireOwner = false, requireAdmin = false }) => {
+  const { user, loading, isOwner, isAdmin } = useAuth();
 
   if (loading) {
     return <div className="loading-screen">
@@ -32,6 +31,10 @@ const ProtectedRoute = ({ children, requireOwner = false }) => {
   }
 
   if (requireOwner && !isOwner) {
+    return <Navigate to="/dashboard" />;
+  }
+
+  if (requireAdmin && !isAdmin) {
     return <Navigate to="/dashboard" />;
   }
 
@@ -92,6 +95,12 @@ const AppRoutes = () => {
       <Route path="/dashboard/owner" element={
         <ProtectedRoute requireOwner>
           <OwnerDashboard />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/dashboard/admin" element={
+        <ProtectedRoute requireAdmin>
+          <AdminDashboard />
         </ProtectedRoute>
       } />
       

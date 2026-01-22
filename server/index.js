@@ -1,8 +1,11 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const restaurantRoutes = require('./routes/restaurants');
 const { router: authRoutes, authenticateToken } = require('./routes/auth');
-const ownerRoutes = require('./routes/owner'); 
+const ownerRoutes = require('./routes/owner');
+const adminRoutes = require('./routes/admin');
+const uploadRoutes = require('./routes/upload');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -11,143 +14,15 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/restaurants', restaurantRoutes);
 app.use('/api/owner', authenticateToken, ownerRoutes);
-app.use('/api/owner', ownerRoutes); // Owner routes protected by authenticateToken middleware
-app.use('/api/auth', authRoutes); // Auth routes
-app.use('/api/restaurants', restaurantRoutes); // Restaurant routes
-app.use('/api/owner', ownerRoutes); // Owner routes
-
-// Protected Test Route
-app.get('/api/protected', authenticateToken, (req, res) => {
-  res.json({
-    success: true,
-    message: 'This is a protected route',
-    user: req.user
-  });
-});
-
-app.get('/api/public', (req, res) => {
-  res.json({
-    success: true,
-    message: 'This is a public route'
-  });
-});
-
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    error: 'Endpoint not found'
-  });
-});
-
-app.get('/api/restaurants', (req, res) => {
-  res.json({
-    success: true,
-    message: 'List of restaurants would be here'
-  });
-});
-
-app.get('/api/owner/dashboard', authenticateToken, (req, res) => {
-  if (req.user.role !== 'owner') {
-    return res.status(403).json({
-      success: false,
-      error: 'Access denied'
-    });
-  }
-
-  res.json({
-    success: true,
-    message: `Welcome to the owner dashboard, ${req.user.name}`
-  });
-});
-
-app.get('/api/owner/restaurants', authenticateToken, (req, res) => {
-  if (req.user.role !== 'owner') {
-    return res.status(403).json({
-      success: false,
-      error: 'Access denied'
-    });
-  }
-
-  res.json({
-    success: true,
-    message: `List of your restaurants, ${req.user.name}`
-  });
-});
-
-app.get('/api/owner/dishes', authenticateToken, (req, res) => {
-  if (req.user.role !== 'owner') {
-    return res.status(403).json({
-      success: false,
-      error: 'Access denied'
-    });
-  }
-
-  res.json({
-    success: true,
-    message: `List of your dishes, ${req.user.name}`
-  });
-});
-
-app.get('/api/owner/orders', authenticateToken, (req, res) => {
-  if (req.user.role !== 'owner') {
-    return res.status(403).json({
-      success: false,
-      error: 'Access denied'
-    });
-  }
-
-  res.json({
-    success: true,
-    message: `List of your orders, ${req.user.name}`
-  });
-});
-
-app.get('/api/owner/reports', authenticateToken, (req, res) => {
-  if (req.user.role !== 'owner') {
-    return res.status(403).json({
-      success: false,
-      error: 'Access denied'
-    });
-  }
-
-  res.json({
-    success: true,
-    message: `Your reports, ${req.user.name}`
-  });
-});
-
-app.get('/api/owner/settings', authenticateToken, (req, res) => {
-  if (req.user.role !== 'owner') {
-    return res.status(403).json({
-      success: false,
-      error: 'Access denied'
-    });
-  }
-
-  res.json({
-    success: true,
-    message: `Your settings, ${req.user.name}`
-  });
-});
-
-app.get('/api/owner/profile', authenticateToken, (req, res) => {
-  if (req.user.role !== 'owner') {
-    return res.status(403).json({
-      success: false,
-      error: 'Access denied'
-    });
-  }
-
-  res.json({
-    success: true,
-    message: `Your profile, ${req.user.name}`
-  });
-});
-
+app.use('/api/admin', authenticateToken, adminRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -167,9 +42,19 @@ app.get('/', (req, res) => {
     endpoints: {
       restaurants: '/api/restaurants',
       health: '/api/health',
-      // Authentication: '/api/auth',
-      owner: '/api/owner'
+      auth: '/api/auth',
+      owner: '/api/owner',
+      admin: '/api/admin',
+      upload: '/api/upload'
     }
+  });
+});
+
+// 404 handler - must be last
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    error: 'Endpoint not found'
   });
 });
 

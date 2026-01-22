@@ -2,19 +2,28 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const mysql = require('mysql2');
 require('dotenv').config();
 
 // Database connection
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'dishcovery',
-  port: process.env.DB_PORT || 3306
-});
+const promisePool = require('../db');
 
-const promisePool = pool.promise();
+// Validation utilities
+const {
+  isValidEmail,
+  isValidPassword,
+  isValidName,
+  isValidRole,
+  isValidBio,
+  isValidLocation
+} = require('../utils/validation');
+
+const {
+  validationError,
+  multiFieldValidationError,
+  conflictError,
+  authError,
+  serverError
+} = require('../utils/errorHandler');
 
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_jwt_key_change_in_production';
@@ -48,25 +57,62 @@ router.post('/register', async (req, res) => {
   try {
     const { email, password, name, role = 'customer', location, bio } = req.body;
 
-    // Validation
-    if (!email || !password || !name) {
-      return res.status(400).json({
-        success: false,
-        error: 'Please provide email, password, and name'
+    // Comprehensive validation
+    const errors = [];
+
+    if (!email || !isValidEmail(email)) {
+      errors.push({ field: 'email', message: 'Valid email is required' });
+    }
+
+    if (!password || !isValidPassword(password)) {
+      errors.push({ 
+        field: 'password', 
+        message: 'Password must be at least 6 characters' 
       });
+    }
+
+    if (!name || !isValidName(name)) {
+      errors.push({ 
+        field: 'name', 
+        message: 'Name must be 2-100 characters' 
+      });
+    }
+
+    if (!isValidRole(role)) {
+      errors.push({ 
+        field: 'role', 
+        message: 'Invalid role' 
+      });
+    }
+
+    if (location && !isValidLocation(location)) {
+      errors.push({ 
+        field: 'location', 
+        message: 'Location must be 2-100 characters' 
+      });
+    }
+
+    if (bio && !isValidBio(bio)) {
+      errors.push({ 
+        field: 'bio', 
+        message: 'Bio must be less than 500 characters' 
+      });
+    }
+
+    if (errors.length > 0) {
+      const response = multiFieldValidationError(errors);
+      return res.status(response.statusCode).json(response);
     }
 
     // Check if user exists
     const [existingUsers] = await promisePool.execute(
       'SELECT id FROM users WHERE email = ?',
-      [email]
+      [email.toLowerCase()]
     );
 
     if (existingUsers.length > 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'User already exists with this email'
-      });
+      const response = conflictError('User already exists with this email');
+      return res.status(response.statusCode).json(response);
     }
 
     // Hash password
@@ -77,18 +123,18 @@ router.post('/register', async (req, res) => {
     const [result] = await promisePool.execute(
       `INSERT INTO users (email, password_hash, name, role, location, bio) 
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [email, hashedPassword, name, role, location || null, bio || null]
+      [email.toLowerCase(), hashedPassword, name.trim(), role, location || null, bio || null]
     );
 
     // Generate JWT token
     const token = jwt.sign(
       { 
         id: result.insertId, 
-        email, 
-        name, 
+        email: email.toLowerCase(), 
+        name: name.trim(), 
         role,
-        location,
-        bio
+        location: location || null,
+        bio: bio || null
       },
       JWT_SECRET,
       { expiresIn: '7d' }
@@ -109,10 +155,8 @@ router.post('/register', async (req, res) => {
 
   } catch (error) {
     console.error('Registration error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Registration failed'
-    });
+    const response = serverError('Registration failed', error);
+    res.status(response.statusCode).json(response);
   }
 });
 
@@ -122,35 +166,39 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
     // Validation
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        error: 'Please provide email and password'
-      });
+    const errors = [];
+
+    if (!email || !isValidEmail(email)) {
+      errors.push({ field: 'email', message: 'Valid email is required' });
+    }
+
+    if (!password) {
+      errors.push({ field: 'password', message: 'Password is required' });
+    }
+
+    if (errors.length > 0) {
+      const response = multiFieldValidationError(errors);
+      return res.status(response.statusCode).json(response);
     }
 
     // Find user
     const [users] = await promisePool.execute(
       'SELECT * FROM users WHERE email = ?',
-      [email]
+      [email.toLowerCase()]
     );
 
     if (users.length === 0) {
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid credentials'
-      });
+      const response = authError('Invalid credentials');
+      return res.status(response.statusCode).json(response);
     }
 
     const user = users[0];
 
     // Check password
-    const isValidPassword = await bcrypt.compare(password, user.password_hash);
-    if (!isValidPassword) {
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid credentials'
-      });
+    const isValidPasswordMatch = await bcrypt.compare(password, user.password_hash);
+    if (!isValidPasswordMatch) {
+      const response = authError('Invalid credentials');
+      return res.status(response.statusCode).json(response);
     }
 
     // Update last login
@@ -186,10 +234,8 @@ router.post('/login', async (req, res) => {
 
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Login failed'
-    });
+    const response = serverError('Login failed', error);
+    res.status(response.statusCode).json(response);
   }
 });
 

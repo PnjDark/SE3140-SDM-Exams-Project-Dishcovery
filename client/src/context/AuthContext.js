@@ -192,6 +192,7 @@ export const AuthProvider = ({ children }) => {
     clearError,
     isAuthenticated: !!user && !!token,
     isOwner: user?.role === 'owner',
+    isAdmin: user?.role === 'admin',
     isCustomer: user?.role === 'customer' || !!user?.role
   };
 

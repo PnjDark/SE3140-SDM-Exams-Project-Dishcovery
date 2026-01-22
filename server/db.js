@@ -24,7 +24,4 @@ promisePool.getConnection()
   });
 
 // Export both promise and regular pool
-module.exports = {
-  query: (text, params) => promisePool.execute(text, params),
-  pool: promisePool
-};
+module.exports = promisePool;

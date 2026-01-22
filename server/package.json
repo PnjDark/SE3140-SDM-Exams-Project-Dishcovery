@@ -3,7 +3,13 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "db:setup": "node ../database/setup.js",
+    "db:reset": "node ../database/setup.js --reset",
+    "db:migrate": "node ../database/migrate.js",
+    "db:seed": "node ../database/seed.js"
   },
   "keywords": [],
   "author": "",
@@ -15,6 +21,10 @@
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
-    "mysql2": "^3.16.0"
+    "mysql2": "^3.16.0",
+    "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
   }
 }

@@ -6,7 +6,7 @@ import './Navbar.css';
 const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, isAuthenticated, isOwner } = useAuth();
+  const { user, logout, isAuthenticated, isOwner, isAdmin } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
@@ -15,7 +15,12 @@ const Navbar = () => {
     { path: '/restaurants', label: 'Restaurants'},
   ];
 
-  const userLinks = isOwner
+  const userLinks = isAdmin
+    ? [
+        { path: '/dashboard/admin', label: 'Admin Dashboard' },
+        { path: '/profile', label: 'Profile'},
+      ]
+    : isOwner
     ? [
         { path: '/dashboard/owner', label: 'Owner Dashboard'},
         { path: '/profile', label: 'Profile'},
