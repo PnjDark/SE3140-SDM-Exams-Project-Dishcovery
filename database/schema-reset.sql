@@ -45,7 +45,10 @@ CREATE TABLE restaurants (
     website VARCHAR(200),
     opening_hours JSON,
     social_links JSON,
+    image_url VARCHAR(500),
+    status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
@@ -81,10 +84,10 @@ CREATE TABLE reviews (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- RESTAURANT OWNERS TABLE
+-- RESTAURANT OWNERS TABLE (1 Owner = 1 Restaurant)
 CREATE TABLE restaurant_owners (
-    user_id INT NOT NULL,
-    restaurant_id INT NOT NULL,
+    user_id INT NOT NULL UNIQUE,
+    restaurant_id INT NOT NULL UNIQUE,
     role ENUM('owner', 'manager', 'staff') DEFAULT 'owner',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (user_id, restaurant_id),
@@ -164,20 +167,16 @@ INSERT INTO users (email, password_hash, name, role) VALUES
 ('customer1@dishcovery.com', '$2a$10$s7J2p.ZN7E6c3h8Lq5VQeO9Qk2fY1wR3tT4uV5xW6yZ7A8B9C0D1E2F3G', 'Foodie Alex', 'customer'),
 ('customer2@dishcovery.com', '$2a$10$s7J2p.ZN7E6c3h8Lq5VQeO9Qk2fY1wR3tT4uV5xW6yZ7A8B9C0D1E2F3G', 'Reviewer Sam', 'customer');
 
--- INSERT SAMPLE RESTAURANTS
-INSERT INTO restaurants (name, cuisine, location, rating, price_range, description, owner_id) VALUES
-('Mama Mia Italian', 'Italian', 'Downtown', 4.5, 3, 'Authentic Italian cuisine with wood-fired pizzas', 1),
-('Tokyo Sushi', 'Japanese', 'Waterfront', 4.7, 4, 'Fresh sushi and Japanese specialties', 2),
-('Spice Kingdom', 'Indian', 'Midtown', 4.2, 2, 'Traditional Indian dishes with modern twist', 3),
-('El Mariachi', 'Mexican', 'East Side', 4.0, 1, 'Vibrant Mexican street food', 1),
-('Le French Cafe', 'French', 'West End', 4.3, 3, 'French pastries and coffee', 2);
+-- INSERT SAMPLE RESTAURANTS (1 per owner, respecting 1:1 relationship)
+INSERT INTO restaurants (name, cuisine, location, rating, price_range, description, owner_id, status) VALUES
+('Mama Mia Italian', 'Italian', 'Downtown', 4.5, 3, 'Authentic Italian cuisine with wood-fired pizzas', 1, 'approved'),
+('Tokyo Sushi', 'Japanese', 'Waterfront', 4.7, 4, 'Fresh sushi and Japanese specialties', 2, 'approved'),
+('Spice Kingdom', 'Indian', 'Midtown', 4.2, 2, 'Traditional Indian dishes with modern twist', 3, 'approved');
 
--- INSERT RESTAURANT OWNERS
+-- INSERT RESTAURANT OWNERS (1:1 mapping - each owner owns exactly 1 restaurant)
 INSERT INTO restaurant_owners (user_id, restaurant_id, role) VALUES
 (1, 1, 'owner'),
-(1, 4, 'owner'),
 (2, 2, 'owner'),
-(2, 5, 'owner'),
 (3, 3, 'owner');
 
 -- INSERT SAMPLE DISHES
@@ -195,17 +194,7 @@ INSERT INTO dishes (restaurant_id, name, description, price, category, is_vegeta
 -- Restaurant 3: Spice Kingdom
 (3, 'Butter Chicken', 'Creamy tomato curry with tender chicken', 18.99, 'Curry', FALSE, TRUE),
 (3, 'Vegetable Biryani', 'Spiced rice with mixed vegetables', 15.50, 'Rice Dish', TRUE, TRUE),
-(3, 'Garlic Naan', 'Soft bread with garlic butter', 3.99, 'Bread', TRUE, FALSE),
-
--- Restaurant 4: El Mariachi
-(4, 'Beef Tacos', 'Three soft tacos with seasoned beef', 11.99, 'Tacos', FALSE, TRUE),
-(4, 'Guacamole', 'Fresh avocado dip with chips', 7.99, 'Appetizer', TRUE, FALSE),
-(4, 'Churros', 'Cinnamon sugar pastries', 5.99, 'Dessert', TRUE, FALSE),
-
--- Restaurant 5: Le French Cafe
-(5, 'Croissant', 'Freshly baked butter croissant', 3.50, 'Pastry', TRUE, FALSE),
-(5, 'Quiche Lorraine', 'Savory pie with bacon and cheese', 9.99, 'Main Course', FALSE, FALSE),
-(5, 'Creme Brulee', 'Classic French dessert', 7.99, 'Dessert', TRUE, FALSE);
+(3, 'Garlic Naan', 'Soft bread with garlic butter', 3.99, 'Bread', TRUE, FALSE);
 
 -- INSERT SAMPLE REVIEWS
 INSERT INTO reviews (restaurant_id, user_id, user_name, comment, rating) VALUES
@@ -218,8 +207,8 @@ INSERT INTO reviews (restaurant_id, user_id, user_name, comment, rating) VALUES
 
 -- INSERT RESTAURANT FOLLOWS
 INSERT INTO restaurant_follows (user_id, restaurant_id) VALUES
-(4, 1), (4, 2), (4, 3),  -- Foodie Alex follows 3 restaurants
-(5, 2), (5, 5);          -- Reviewer Sam follows 2 restaurants
+(4, 1), (4, 2), (4, 3),  -- Foodie Alex follows all 3 restaurants
+(5, 1), (5, 2);          -- Reviewer Sam follows 2 restaurants
 
 -- INSERT SAMPLE POSTS
 INSERT INTO posts (restaurant_id, user_id, type, title, content, is_published) VALUES

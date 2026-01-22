@@ -110,24 +110,18 @@ const RestaurantDetails = () => {
           alt={name}
           className="restaurant-image"
         />
+        <button
+          onClick={handleBack}
+          className="back-nav"
+        >
+          ← Back
+        </button>
         <div className="restaurant-info">
-          <button
-            onClick={handleBack}
-            className="back-nav"
-          >
-            ← Back
-          </button>
-          
           <h1 className="restaurant-title">{name}</h1>
           
           <div className="restaurant-meta">
             <div className="restaurant-rating">
-              ⭐ {
-  !isNaN(Number(rating))
-    ? Number(rating).toFixed(1)
-    : 'New'
-} ({totalReviews || 0} reviews)
-
+              ⭐ {!isNaN(Number(rating)) ? Number(rating).toFixed(1) : 'New'} ({totalReviews || 0} {totalReviews === 1 ? 'review' : 'reviews'})
             </div>
             
             <div className="delivery-time">

@@ -51,9 +51,16 @@ router.get('/dashboard', authenticateToken, isAdmin, async (req, res) => {
       'SELECT id, name, email, role, created_at FROM users ORDER BY created_at DESC LIMIT 5'
     );
 
-    const [pendingRestaurants] = await promisePool.execute(
-      'SELECT id, name, cuisine, location, owner_id, status, created_at FROM restaurants WHERE status = "pending" LIMIT 5'
-    );
+    const [pendingRestaurants] = await promisePool.execute(`
+      SELECT r.id, r.name, r.cuisine, r.location, r.status, r.created_at,
+             GROUP_CONCAT(DISTINCT CONCAT(u.name, ' (', ro.role, ')') SEPARATOR ', ') as owners
+      FROM restaurants r
+      LEFT JOIN restaurant_owners ro ON r.id = ro.restaurant_id
+      LEFT JOIN users u ON ro.user_id = u.id
+      WHERE r.status = "pending"
+      GROUP BY r.id
+      LIMIT 5
+    `);
 
     res.json({
       success: true,
@@ -120,7 +127,7 @@ router.get('/users/:id', authenticateToken, isAdmin, async (req, res) => {
     let restaurants = [];
     if (users[0].role === 'owner') {
       const [ownerRestaurants] = await promisePool.execute(
-        'SELECT id, name, status FROM restaurants WHERE owner_id = ?',
+        'SELECT r.id, r.name, r.status FROM restaurants r INNER JOIN restaurant_owners ro ON r.id = ro.restaurant_id WHERE ro.user_id = ?',
         [id]
       );
       restaurants = ownerRestaurants;
@@ -266,11 +273,13 @@ router.get('/restaurants', authenticateToken, isAdmin, async (req, res) => {
     const offset = (page - 1) * limit;
 
     let query = `
-      SELECT r.id, r.name, r.cuisine, r.location, r.status, r.owner_id, r.created_at,
-             u.name as owner_name, COUNT(DISTINCT d.id) as dish_count,
+      SELECT r.id, r.name, r.cuisine, r.location, r.status, r.created_at,
+             GROUP_CONCAT(DISTINCT CONCAT(u.name, ' (', ro.role, ')') SEPARATOR ', ') as owners,
+             COUNT(DISTINCT d.id) as dish_count,
              COUNT(DISTINCT rev.id) as review_count, AVG(rev.rating) as avg_rating
       FROM restaurants r
-      LEFT JOIN users u ON r.owner_id = u.id
+      LEFT JOIN restaurant_owners ro ON r.id = ro.restaurant_id
+      LEFT JOIN users u ON ro.user_id = u.id
       LEFT JOIN dishes d ON r.id = d.restaurant_id
       LEFT JOIN reviews rev ON r.id = rev.restaurant_id
     `;

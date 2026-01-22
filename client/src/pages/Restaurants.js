@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import RestaurantCard from '../components/RestaurantCard';
-import FilterBar from '../components/FilterBar';
 import './Restaurants.css';
 
 const Restaurants = () => {
@@ -8,12 +7,19 @@ const Restaurants = () => {
   const [filteredRestaurants, setFilteredRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  
   const [filters, setFilters] = useState({
-    cuisine: '',
+    cuisine: 'all',
     minRating: '',
     maxPrice: '',
     sortBy: 'rating'
   });
+
+  const cuisines = [
+    'Italian', 'Indian', 'Japanese', 'Mexican', 'French',
+    'Chinese', 'American', 'Thai', 'Korean', 'Mediterranean'
+  ];
 
   // Fetch restaurants from backend API
   useEffect(() => {
@@ -50,7 +56,7 @@ const Restaurants = () => {
     let result = [...restaurants];
 
     // Filter by cuisine
-    if (filters.cuisine) {
+    if (filters.cuisine && filters.cuisine !== 'all') {
       result = result.filter(restaurant => 
         restaurant.cuisine?.toLowerCase() === filters.cuisine.toLowerCase()
       );
@@ -93,85 +99,202 @@ const Restaurants = () => {
     setFilteredRestaurants(result);
   };
 
-  const handleFilterChange = (newFilters) => {
-    setFilters(newFilters);
+  const handleFilterChange = (filterName, value) => {
+    setFilters(prev => ({ ...prev, [filterName]: value }));
   };
 
-  const getStats = () => {
-    const total = restaurants.length;
-    const showing = filteredRestaurants.length;
-    const hidden = total - showing;
-    
-    return { total, showing, hidden };
+  const handleResetFilters = () => {
+    setFilters({
+      cuisine: 'all',
+      minRating: '',
+      maxPrice: '',
+      sortBy: 'rating'
+    });
   };
-
-  const stats = getStats();
 
   if (loading) {
     return (
-      <div className="loading-container">
-        <div className="spinner"></div>
-        <p>Loading restaurants...</p>
+      <div className="restaurants-page">
+        <div className="loading-container">
+          <div className="spinner"></div>
+          <p>Loading restaurants...</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="error-container">
-        <h3>Error Loading Restaurants</h3>
-        <p>{error}</p>
-        <button onClick={fetchRestaurants} className="retry-btn">
-          Try Again
-        </button>
+      <div className="restaurants-page">
+        <div className="error-container">
+          <h3>Error Loading Restaurants</h3>
+          <p>{error}</p>
+          <button onClick={fetchRestaurants} className="retry-btn">
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="restaurants-page">
-      <div className="page-header">
-        <h1>Discover Amazing Restaurants</h1>
-        <p className="subtitle">
-          {stats.total} restaurants available • Showing {stats.showing}
-          {stats.hidden > 0 && ` (${stats.hidden} hidden by filters)`}
+      {/* Header */}
+      <div className="search-header">
+        <h1>🏪 Browse All Restaurants</h1>
+        <p>Explore {restaurants.length} amazing restaurants in your area</p>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="filter-bar">
+        <div className="filter-header">
+          <h3>🔍 Filter & Sort Restaurants</h3>
+          <div className="filter-controls">
+            <button 
+              className="advanced-toggle"
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+            >
+              ⚙️ {showAdvancedFilters ? 'Hide' : 'Advanced Filters'}
+            </button>
+            <button 
+              className="reset-btn"
+              onClick={handleResetFilters}
+            >
+              Reset All
+            </button>
+          </div>
+        </div>
+
+        {/* Basic Filters */}
+        <div className="filters-section">
+          <div className="filter-container">
+            <label htmlFor="cuisine-filter">🍽️ Cuisine Type</label>
+            <select
+              id="cuisine-filter"
+              className="filter-dropdown"
+              value={filters.cuisine}
+              onChange={(e) => handleFilterChange('cuisine', e.target.value)}
+            >
+              <option value="all">All Cuisines</option>
+              {cuisines.map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="filter-container">
+            <label htmlFor="min-rating">⭐ Minimum Rating</label>
+            <select
+              id="min-rating"
+              className="filter-dropdown"
+              value={filters.minRating}
+              onChange={(e) => handleFilterChange('minRating', e.target.value)}
+            >
+              <option value="">Any Rating</option>
+              <option value="3">3+ Stars</option>
+              <option value="3.5">3.5+ Stars</option>
+              <option value="4">4+ Stars</option>
+              <option value="4.5">4.5+ Stars</option>
+            </select>
+          </div>
+
+          <div className="filter-container">
+            <label htmlFor="max-price">💰 Maximum Price</label>
+            <input
+              id="max-price"
+              type="number"
+              className="filter-input"
+              placeholder="Max price"
+              value={filters.maxPrice}
+              onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
+              min="0"
+            />
+          </div>
+
+          <div className="filter-container">
+            <label htmlFor="sort-by">📊 Sort By</label>
+            <select
+              id="sort-by"
+              className="filter-dropdown"
+              value={filters.sortBy}
+              onChange={(e) => handleFilterChange('sortBy', e.target.value)}
+            >
+              <option value="rating">⭐ Highest Rated</option>
+              <option value="name">🔤 A-Z</option>
+              <option value="price">💰 Price: Low to High</option>
+              <option value="price_desc">💰 Price: High to Low</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Advanced Filters - Collapsible */}
+        {showAdvancedFilters && (
+          <div className="advanced-filters">
+            <h4>⚙️ Advanced Filters</h4>
+            <div className="advanced-content">
+              <div className="filter-group">
+                <label>🏆 Rating Range</label>
+                <div className="filter-chips">
+                  <button className="filter-chip">Recently Added</button>
+                  <button className="filter-chip">Most Reviewed</button>
+                  <button className="filter-chip">Top Rated</button>
+                </div>
+              </div>
+              <div className="filter-group">
+                <label>🏪 Restaurant Type</label>
+                <div className="filter-chips">
+                  <button className="filter-chip">Dine-in</button>
+                  <button className="filter-chip">Takeaway</button>
+                  <button className="filter-chip">Delivery</button>
+                  <button className="filter-chip">Outdoor</button>
+                </div>
+              </div>
+              <div className="filter-group">
+                <label>🥗 Dietary Options</label>
+                <div className="filter-chips">
+                  <button className="filter-chip">Vegetarian</button>
+                  <button className="filter-chip">Vegan</button>
+                  <button className="filter-chip">Gluten-Free</button>
+                  <button className="filter-chip">Halal</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Results Info */}
+      <div className="results-info">
+        <p>
+          Found <strong>{filteredRestaurants.length}</strong> restaurants
+          {filters.cuisine !== 'all' && ` with ${filters.cuisine} cuisine`}
+          {filters.minRating && ` rated ${filters.minRating}+ stars`}
+          {filters.maxPrice && ` under $${filters.maxPrice}`}
         </p>
       </div>
 
-      <FilterBar onFilterChange={handleFilterChange} />
-
+      {/* Results Grid */}
       {filteredRestaurants.length === 0 ? (
         <div className="no-results">
           <div className="no-results-icon">🔍</div>
-          <h3>No restaurants match your filters</h3>
-          <p>Try adjusting your filters or clear them to see all restaurants.</p>
+          <h3>No restaurants found</h3>
+          <p>Try adjusting your filters to see more options.</p>
           <button 
-            onClick={() => handleFilterChange({
-              cuisine: '',
-              minRating: '',
-              maxPrice: '',
-              sortBy: 'rating'
-            })}
+            onClick={handleResetFilters}
             className="clear-filters-btn"
           >
             Clear All Filters
           </button>
         </div>
       ) : (
-        <>
-          <div className="restaurants-grid">
-            {filteredRestaurants.map(restaurant => (
-              <RestaurantCard 
-                key={restaurant.id} 
-                restaurant={restaurant}
-              />
-            ))}
-          </div>
-
-          <div className="results-footer">
-            <p>Showing {filteredRestaurants.length} of {restaurants.length} restaurants</p>
-          </div>
-        </>
+        <div className="restaurants-grid">
+          {filteredRestaurants.map(restaurant => (
+            <RestaurantCard 
+              key={restaurant.id} 
+              restaurant={restaurant}
+            />
+          ))}
+        </div>
       )}
     </div>
   );

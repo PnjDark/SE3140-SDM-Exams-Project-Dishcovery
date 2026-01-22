@@ -78,10 +78,10 @@ CREATE TABLE favorites (
     FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE
 );
 
--- 2. RESTAURANT OWNERSHIP TABLE
+-- 2. RESTAURANT OWNERSHIP TABLE (1 Owner = 1 Restaurant)
 CREATE TABLE IF NOT EXISTS restaurant_owners (
-    user_id INT NOT NULL,
-    restaurant_id INT NOT NULL,
+    user_id INT NOT NULL UNIQUE,
+    restaurant_id INT NOT NULL UNIQUE,
     role ENUM('owner', 'manager', 'staff') DEFAULT 'owner',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (user_id, restaurant_id),

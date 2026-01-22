@@ -7,6 +7,7 @@ import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Restaurants from './pages/Restaurants';
 import RestaurantDetails from './pages/RestaurantDetails';
+import DishSearch from './pages/DishSearch';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -72,6 +73,7 @@ const AppRoutes = () => {
       <Route path="/" element={<Home />} />
       <Route path="/restaurants" element={<Restaurants />} />
       <Route path="/restaurants/:id" element={<RestaurantDetails />} />
+      <Route path="/dishes/search" element={<DishSearch />} />
       
       {/* Auth Routes - Only for non-logged in users */}
       <Route path="/login" element={

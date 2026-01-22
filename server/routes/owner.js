@@ -37,14 +37,16 @@ router.get('/restaurants', authenticateToken, isOwner, async (req, res) => {
     
     const [restaurants] = await promisePool.execute(`
       SELECT r.*, 
+             ro.role as owner_role,
              COUNT(DISTINCT d.id) as dish_count,
              COUNT(DISTINCT rev.id) as review_count,
              AVG(rev.rating) as avg_rating
       FROM restaurants r
+      INNER JOIN restaurant_owners ro ON r.id = ro.restaurant_id
       LEFT JOIN dishes d ON r.id = d.restaurant_id
       LEFT JOIN reviews rev ON r.id = rev.restaurant_id
-      WHERE r.owner_id = ?
-      GROUP BY r.id
+      WHERE ro.user_id = ?
+      GROUP BY r.id, ro.role
       ORDER BY r.created_at DESC
     `, [userId]);
     
@@ -170,9 +172,17 @@ router.post('/restaurants', authenticateToken, isOwner, async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating restaurant:', error);
+    console.error('Error details:', { code: error.code, message: error.message, sqlMessage: error.sqlMessage });
     
-    // Handle duplicate name error
+    // Handle duplicate entry error
     if (error.code === 'ER_DUP_ENTRY') {
+      if (error.sqlMessage && error.sqlMessage.includes('user_id')) {
+        return res.status(409).json({
+          success: false,
+          error: 'You already own a restaurant. Each owner can only own one restaurant.',
+          timestamp: new Date().toISOString()
+        });
+      }
       return res.status(409).json({
         success: false,
         error: 'A restaurant with this name already exists',
@@ -183,6 +193,7 @@ router.post('/restaurants', authenticateToken, isOwner, async (req, res) => {
     return res.status(500).json({
       success: false,
       error: 'Failed to create restaurant',
+      details: error.message,
       timestamp: new Date().toISOString()
     });
   }
@@ -240,6 +251,22 @@ router.put('/restaurants/:id', authenticateToken, isOwner, async (req, res) => {
     
     const query = `UPDATE restaurants SET ${updateFields.join(', ')} WHERE id = ?`;
     await promisePool.execute(query, values);
+    
+    // Auto-create post for restaurant update
+    const updateType = updates.name || updates.cuisine || updates.location ? 'profile_update' : 'update';
+    const postTitle = `Restaurant ${updateType === 'profile_update' ? 'Profile' : 'Menu'} Updated`;
+    const postContent = `Updated: ${Object.keys(updates).join(', ')}`;
+    
+    try {
+      await promisePool.execute(
+        `INSERT INTO posts (restaurant_id, user_id, type, title, content, is_published)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [restaurantId, userId, 'menu_update', postTitle, postContent, true]
+      );
+    } catch (postError) {
+      console.warn('Failed to create post for restaurant update:', postError);
+      // Don't fail the entire update if post creation fails
+    }
     
     // Get updated restaurant
     const [updatedRestaurant] = await promisePool.execute(
@@ -392,6 +419,24 @@ router.post('/restaurants/:id/dishes', authenticateToken, isOwner, async (req, r
       [result.insertId]
     );
     
+    // Auto-create post for new dish (menu update)
+    try {
+      await promisePool.execute(
+        `INSERT INTO posts (restaurant_id, user_id, type, title, content, is_published)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [
+          restaurantId,
+          userId,
+          'menu_update',
+          `🆕 New Dish Added: ${name}`,
+          `Added ${name} to the menu at $${price}`,
+          true
+        ]
+      );
+    } catch (postError) {
+      console.warn('Failed to create post for new dish:', postError);
+    }
+    
     res.status(201).json({
       success: true,
       message: 'Dish created successfully',
@@ -415,7 +460,7 @@ router.put('/dishes/:id', authenticateToken, isOwner, async (req, res) => {
     
     // Get dish and check ownership through restaurant
     const [dishes] = await promisePool.execute(
-      `SELECT d.* FROM dishes d
+      `SELECT d.*, d.restaurant_id FROM dishes d
        JOIN restaurant_owners ro ON d.restaurant_id = ro.restaurant_id
        WHERE d.id = ? AND ro.user_id = ?`,
       [dishId, userId]
@@ -428,9 +473,9 @@ router.put('/dishes/:id', authenticateToken, isOwner, async (req, res) => {
       });
     }
     
-    // Build update query
-    const updateFields = [];
+    const restaurantId = dishes[0].restaurant_id;
     const values = [];
+    const updateFields = [];
     
     const allowedFields = [
       'name', 'description', 'price', 'category',
@@ -461,6 +506,26 @@ router.put('/dishes/:id', authenticateToken, isOwner, async (req, res) => {
     const query = `UPDATE dishes SET ${updateFields.join(', ')} WHERE id = ?`;
     await promisePool.execute(query, values);
     
+    // Auto-create post for dish update (menu update)
+    if (Object.keys(updates).length > 0) {
+      try {
+        await promisePool.execute(
+          `INSERT INTO posts (restaurant_id, user_id, type, title, content, is_published)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [
+            restaurantId,
+            userId,
+            'menu_update',
+            `📝 Menu Updated: ${updates.name || dishes[0].name}`,
+            `Updated: ${Object.keys(updates).join(', ')}`,
+            true
+          ]
+        );
+      } catch (postError) {
+        console.warn('Failed to create post for dish update:', postError);
+      }
+    }
+    
     // Get updated dish
     const [updatedDish] = await promisePool.execute(
       'SELECT * FROM dishes WHERE id = ?',
@@ -474,9 +539,11 @@ router.put('/dishes/:id', authenticateToken, isOwner, async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating dish:', error);
+    console.error('Error details:', { message: error.message, sqlMessage: error.sqlMessage });
     res.status(500).json({
       success: false,
-      error: 'Failed to update dish'
+      error: 'Failed to update dish',
+      details: error.message
     });
   }
 });
@@ -489,7 +556,7 @@ router.delete('/dishes/:id', authenticateToken, isOwner, async (req, res) => {
     
     // Check ownership
     const [dishes] = await promisePool.execute(
-      `SELECT d.* FROM dishes d
+      `SELECT d.*, d.restaurant_id FROM dishes d
        JOIN restaurant_owners ro ON d.restaurant_id = ro.restaurant_id
        WHERE d.id = ? AND ro.user_id = ?`,
       [dishId, userId]
@@ -683,6 +750,257 @@ router.get('/analytics/:restaurantId', authenticateToken, isOwner, async (req, r
     res.status(500).json({
       success: false,
       error: 'Failed to fetch analytics'
+    });
+  }
+});
+
+// ============ MULTIPLE OWNERS MANAGEMENT ============
+
+// GET restaurant owners
+router.get('/restaurants/:id/owners', authenticateToken, isOwner, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const restaurantId = req.params.id;
+    
+    // Check if user is an owner of this restaurant
+    const [ownership] = await promisePool.execute(
+      'SELECT * FROM restaurant_owners WHERE user_id = ? AND restaurant_id = ?',
+      [userId, restaurantId]
+    );
+    
+    if (!ownership.length) {
+      return res.status(403).json({
+        success: false,
+        error: 'You do not have permission to manage this restaurant'
+      });
+    }
+    
+    // Get all owners of this restaurant
+    const [owners] = await promisePool.execute(`
+      SELECT u.id, u.name, u.email, ro.role, ro.created_at
+      FROM restaurant_owners ro
+      JOIN users u ON ro.user_id = u.id
+      WHERE ro.restaurant_id = ?
+      ORDER BY ro.created_at ASC
+    `, [restaurantId]);
+    
+    res.json({
+      success: true,
+      count: owners.length,
+      data: owners
+    });
+  } catch (error) {
+    console.error('Error fetching restaurant owners:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch restaurant owners'
+    });
+  }
+});
+
+// ADD owner to restaurant
+router.post('/restaurants/:id/owners', authenticateToken, isOwner, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const restaurantId = req.params.id;
+    const { email, role = 'manager' } = req.body;
+    
+    if (!email || !email.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email is required'
+      });
+    }
+    
+    // Check if current user is an owner of this restaurant
+    const [ownership] = await promisePool.execute(
+      'SELECT * FROM restaurant_owners WHERE user_id = ? AND restaurant_id = ? AND role = ?',
+      [userId, restaurantId, 'owner']
+    );
+    
+    if (!ownership.length) {
+      return res.status(403).json({
+        success: false,
+        error: 'Only owners can add new owners to the restaurant'
+      });
+    }
+    
+    // Find user by email
+    const [users] = await promisePool.execute(
+      'SELECT id FROM users WHERE email = ? AND role IN ("owner", "manager")',
+      [email.trim()]
+    );
+    
+    if (!users.length) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found or does not have owner/manager role'
+      });
+    }
+    
+    const newOwnerId = users[0].id;
+    
+    // Check if user is already an owner
+    const [existing] = await promisePool.execute(
+      'SELECT * FROM restaurant_owners WHERE user_id = ? AND restaurant_id = ?',
+      [newOwnerId, restaurantId]
+    );
+    
+    if (existing.length) {
+      return res.status(409).json({
+        success: false,
+        error: 'This user is already an owner of this restaurant'
+      });
+    }
+    
+    // Add new owner
+    await promisePool.execute(
+      'INSERT INTO restaurant_owners (user_id, restaurant_id, role) VALUES (?, ?, ?)',
+      [newOwnerId, restaurantId, role]
+    );
+    
+    res.status(201).json({
+      success: true,
+      message: 'Owner added successfully'
+    });
+  } catch (error) {
+    console.error('Error adding owner:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to add owner'
+    });
+  }
+});
+
+// REMOVE owner from restaurant
+router.delete('/restaurants/:id/owners/:ownerId', authenticateToken, isOwner, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const restaurantId = req.params.id;
+    const ownerToRemoveId = req.params.ownerId;
+    
+    // Check if current user is an owner of this restaurant
+    const [ownership] = await promisePool.execute(
+      'SELECT * FROM restaurant_owners WHERE user_id = ? AND restaurant_id = ? AND role = ?',
+      [userId, restaurantId, 'owner']
+    );
+    
+    if (!ownership.length) {
+      return res.status(403).json({
+        success: false,
+        error: 'Only owners can remove owners from the restaurant'
+      });
+    }
+    
+    // Prevent removing the last owner
+    const [allOwners] = await promisePool.execute(
+      'SELECT COUNT(*) as count FROM restaurant_owners WHERE restaurant_id = ? AND role = "owner"',
+      [restaurantId]
+    );
+    
+    if (allOwners[0].count <= 1) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot remove the last owner. At least one owner is required.'
+      });
+    }
+    
+    // Remove owner
+    const [result] = await promisePool.execute(
+      'DELETE FROM restaurant_owners WHERE user_id = ? AND restaurant_id = ?',
+      [ownerToRemoveId, restaurantId]
+    );
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Owner not found for this restaurant'
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Owner removed successfully'
+    });
+  } catch (error) {
+    console.error('Error removing owner:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to remove owner'
+    });
+  }
+});
+
+// UPDATE owner role
+router.patch('/restaurants/:id/owners/:ownerId', authenticateToken, isOwner, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const restaurantId = req.params.id;
+    const ownerToUpdateId = req.params.ownerId;
+    const { role } = req.body;
+    
+    if (!role || !['owner', 'manager', 'staff'].includes(role)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid role. Must be owner, manager, or staff'
+      });
+    }
+    
+    // Check if current user is an owner of this restaurant
+    const [ownership] = await promisePool.execute(
+      'SELECT * FROM restaurant_owners WHERE user_id = ? AND restaurant_id = ? AND role = ?',
+      [userId, restaurantId, 'owner']
+    );
+    
+    if (!ownership.length) {
+      return res.status(403).json({
+        success: false,
+        error: 'Only owners can modify owner roles'
+      });
+    }
+    
+    // Prevent downgrading the last owner
+    if (role !== 'owner') {
+      const [ownerCount] = await promisePool.execute(
+        'SELECT COUNT(*) as count FROM restaurant_owners WHERE restaurant_id = ? AND role = "owner"',
+        [restaurantId]
+      );
+      
+      const [isLastOwner] = await promisePool.execute(
+        'SELECT role FROM restaurant_owners WHERE user_id = ? AND restaurant_id = ?',
+        [ownerToUpdateId, restaurantId]
+      );
+      
+      if (ownerCount[0].count <= 1 && isLastOwner[0]?.role === 'owner') {
+        return res.status(400).json({
+          success: false,
+          error: 'Cannot downgrade the last owner. At least one owner is required.'
+        });
+      }
+    }
+    
+    // Update role
+    const [result] = await promisePool.execute(
+      'UPDATE restaurant_owners SET role = ? WHERE user_id = ? AND restaurant_id = ?',
+      [role, ownerToUpdateId, restaurantId]
+    );
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Owner not found for this restaurant'
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Owner role updated successfully'
+    });
+  } catch (error) {
+    console.error('Error updating owner role:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update owner role'
     });
   }
 });

@@ -1,11 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import './Home.css';
 
 const Home = () => {
+  const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuth();
   const [topRestaurants, setTopRestaurants] = useState([]);
   const [featuredCuisines, setFeaturedCuisines] = useState([]);
+  const [personalizedFeed, setPersonalizedFeed] = useState([]);
+  const [feedStats, setFeedStats] = useState({ followed: 0, recommended: 0, trending: 0 });
   const [loading, setLoading] = useState(true);
+  const [followedRestaurants, setFollowedRestaurants] = useState(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
   const [stats, setStats] = useState({
     totalRestaurants: 0,
     totalReviews: 0,
@@ -14,24 +21,24 @@ const Home = () => {
 
   const features = [
     {
-      icon: '🍽️',
-      title: 'Discover Restaurants',
-      description: 'Explore hundreds of restaurants with detailed menus and reviews'
+      icon: '🍲',
+      title: 'Find Dishes',
+      description: 'Search for your favorite dishes across hundreds of restaurants'
+    },
+    {
+      icon: '💰',
+      title: 'Best Prices',
+      description: 'Compare prices and find the most affordable options'
     },
     {
       icon: '⭐',
-      title: 'Read Reviews',
-      description: 'See what others are saying about their dining experiences'
+      title: 'Top Rated',
+      description: 'Discover highest-rated dishes from verified reviews'
     },
     {
-      icon: '🔍',
-      title: 'Smart Filters',
-      description: 'Find exactly what you want with advanced filtering options'
-    },
-    {
-      icon: '💬',
-      title: 'Share Experiences',
-      description: 'Leave your own reviews and help others decide'
+      icon: '📍',
+      title: 'Near You',
+      description: 'Find dishes at restaurants closest to your location'
     }
   ];
 
@@ -94,9 +101,72 @@ const Home = () => {
     }
   };
 
+  // Fetch personalized feed for authenticated users
+  const fetchPersonalizedFeed = useCallback(async () => {
+    if (!isAuthenticated || !user?.id) return;
+    
+    try {
+      const response = await fetch(`/api/restaurants/feed/personalized?userId=${user.id}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setPersonalizedFeed(data.data);
+        setFeedStats(data.stats);
+        
+        // Extract followed restaurants
+        const followed = new Set(
+          data.data
+            .filter(r => r.source === 'followed')
+            .map(r => r.id)
+        );
+        setFollowedRestaurants(followed);
+      }
+    } catch (error) {
+      console.error('Error fetching personalized feed:', error);
+    }
+  }, [isAuthenticated, user?.id]);
+
+  const handleFollowToggle = async (restaurantId, isCurrentlyFollowing) => {
+    if (!isAuthenticated || !user?.id) {
+      alert('Please login to follow restaurants');
+      return;
+    }
+
+    try {
+      const method = isCurrentlyFollowing ? 'DELETE' : 'POST';
+      const response = await fetch(`/api/restaurants/${restaurantId}/follow`, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id })
+      });
+
+      if (response.ok) {
+        // Update local state
+        const newFollowed = new Set(followedRestaurants);
+        if (isCurrentlyFollowing) {
+          newFollowed.delete(restaurantId);
+        } else {
+          newFollowed.add(restaurantId);
+        }
+        setFollowedRestaurants(newFollowed);
+        
+        // Refresh feed
+        await fetchPersonalizedFeed();
+      }
+    } catch (error) {
+      console.error('Error toggling follow:', error);
+    }
+  };
+
   useEffect(() => {
-    fetchHomeData(); // Now this works because fetchHomeData is defined above
+    fetchHomeData();
   }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchPersonalizedFeed();
+    }
+  }, [isAuthenticated, user?.id]);
 
   const getCuisineIcon = (cuisine) => {
     const icons = {
@@ -119,6 +189,13 @@ const Home = () => {
     return '#95a5a6';
   };
 
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/dishes/search?q=${encodeURIComponent(searchQuery)}`);
+    }
+  };
+
   if (loading) {
     return (
       <div className="loading-container">
@@ -130,17 +207,32 @@ const Home = () => {
 
   return (
     <div className="home-page">
-      {/* Hero Section with Stats */}
+      {/* Hero Section with Search */}
       <section className="hero">
         <div className="hero-content">
           <h1 className="hero-title">
-            Discover <span className="highlight">{stats.totalRestaurants}</span> Amazing Restaurants
+            Find Your Perfect <span className="highlight">Dish</span>
           </h1>
           <p className="hero-subtitle">
-            Join our community of food lovers exploring {stats.totalRestaurants} restaurants with {stats.totalReviews}+ reviews. 
-            Average rating: <span className="rating-text">⭐ {stats.averageRating}/5</span>
+            Discover dishes served across {stats.totalRestaurants} restaurants. Compare prices, find the best quality, and order from nearby locations.
           </p>
           
+          {/* Search Bar */}
+          <form className="hero-search-form" onSubmit={handleSearch}>
+            <div className="search-input-wrapper">
+              <input
+                type="text"
+                className="search-input"
+                placeholder="Search for pizzas, burgers, sushi... 🍕🍔🍣"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <button type="submit" className="search-btn">
+                🔍 Search
+              </button>
+            </div>
+          </form>
+
           <div className="hero-stats">
             <div className="stat-card">
               <div className="stat-number">{stats.totalRestaurants}</div>
@@ -148,20 +240,20 @@ const Home = () => {
             </div>
             <div className="stat-card">
               <div className="stat-number">{stats.totalReviews}+</div>
-              <div className="stat-label">Reviews</div>
+              <div className="stat-label">Dishes Reviewed</div>
             </div>
             <div className="stat-card">
               <div className="stat-number">{stats.averageRating}</div>
-              <div className="stat-label">Avg Rating</div>
+              <div className="stat-label">Avg Quality</div>
             </div>
           </div>
           
           <div className="hero-buttons">
             <Link to="/restaurants" className="btn btn-primary">
-              Browse All Restaurants →
+              Browse All Dishes →
             </Link>
             <Link to="/restaurants" className="btn btn-secondary">
-              🔍 Search Now
+              📍 Near Me
             </Link>
           </div>
         </div>
@@ -210,6 +302,90 @@ const Home = () => {
         </section>
       )}
 
+      {/* Personalized Feed Section (for authenticated users) */}
+      {isAuthenticated && personalizedFeed.length > 0 && (
+        <section className="personalized-feed">
+          <div className="section-header">
+            <h2>🎯 Your Personalized Feed</h2>
+            <p>Curated just for you: Followed → Recommended → Trending</p>
+          </div>
+          
+          <div className="feed-stats">
+            {feedStats.followed > 0 && (
+              <div className="feed-stat-item">
+                <span className="stat-label">👥 Following</span>
+                <span className="stat-count">{feedStats.followed}</span>
+              </div>
+            )}
+            {feedStats.recommended > 0 && (
+              <div className="feed-stat-item">
+                <span className="stat-label">💡 Recommended</span>
+                <span className="stat-count">{feedStats.recommended}</span>
+              </div>
+            )}
+            {feedStats.trending > 0 && (
+              <div className="feed-stat-item">
+                <span className="stat-label">🔥 Trending</span>
+                <span className="stat-count">{feedStats.trending}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="feed-container">
+            {personalizedFeed.map((restaurant) => {
+              const isFollowing = followedRestaurants.has(restaurant.id);
+              return (
+                <div key={restaurant.id} className={`feed-card source-${restaurant.source}`}>
+                  <div className="feed-source-badge">
+                    {restaurant.source === 'followed' && '👥 Following'}
+                    {restaurant.source === 'recommended' && '💡 Recommended'}
+                    {restaurant.source === 'trending' && '🔥 Trending'}
+                  </div>
+
+                  <div className="feed-header">
+                    <h3>{restaurant.name}</h3>
+                    <span 
+                      className="rating-badge"
+                      style={{ backgroundColor: getRatingColor(restaurant.rating) }}
+                    >
+                      ⭐ {restaurant.rating ? restaurant.rating.toFixed(1) : 'New'}
+                    </span>
+                  </div>
+
+                  <p className="cuisine">
+                    <span className="cuisine-icon-small">{getCuisineIcon(restaurant.cuisine)}</span>
+                    {restaurant.cuisine}
+                  </p>
+                  <p className="location">📍 {restaurant.location}</p>
+                  <p className="description">
+                    {restaurant.description?.substring(0, 100) || 'No description available.'}
+                    {restaurant.description?.length > 100 && '...'}
+                  </p>
+
+                  <div className="feed-footer">
+                    <Link to={`/restaurants/${restaurant.id}`} className="feed-link">
+                      View Details
+                    </Link>
+                    <button 
+                      className={`follow-btn ${isFollowing ? 'following' : ''}`}
+                      onClick={() => handleFollowToggle(restaurant.id, isFollowing)}
+                    >
+                      {isFollowing ? '✓ Following' : '+ Follow'}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="center-button">
+            <Link to="/restaurants" className="btn btn-large">
+              Browse All Restaurants
+            </Link>
+          </div>
+        </section>
+      )}
+
       {/* Features Section */}
       <section className="features-section">
         <div className="section-header">
@@ -219,9 +395,17 @@ const Home = () => {
         <div className="features-grid">
           {features.map((feature, index) => (
             <div key={index} className="feature-card">
-              <div className="feature-icon">{feature.icon}</div>
-              <h3>{feature.title}</h3>
-              <p>{feature.description}</p>
+              <div className="feature-card-inner">
+                {/* Front of card */}
+                <div className="feature-card-front">
+                  <div className="feature-icon">{feature.icon}</div>
+                  <h3>{feature.title}</h3>
+                </div>
+                {/* Back of card */}
+                <div className="feature-card-back">
+                  <p>{feature.description}</p>
+                </div>
+              </div>
             </div>
           ))}
         </div>
