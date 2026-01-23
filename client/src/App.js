@@ -5,6 +5,7 @@ import { RestaurantProvider } from './context/RestaurantContext';
 import { DishProvider } from './context/DishContext';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
+import About from './pages/About';
 import Restaurants from './pages/Restaurants';
 import RestaurantDetails from './pages/RestaurantDetails';
 import DishSearch from './pages/DishSearch';
@@ -71,6 +72,7 @@ const AppRoutes = () => {
     <Routes>
       {/* Public Routes */}
       <Route path="/" element={<Home />} />
+      <Route path="/about" element={<About />} />
       <Route path="/restaurants" element={<Restaurants />} />
       <Route path="/restaurants/:id" element={<RestaurantDetails />} />
       <Route path="/dishes/search" element={<DishSearch />} />

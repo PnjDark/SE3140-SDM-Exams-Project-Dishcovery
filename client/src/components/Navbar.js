@@ -13,6 +13,7 @@ const Navbar = () => {
   const navLinks = [
     { path: '/', label: 'Home' },
     { path: '/restaurants', label: 'Restaurants'},
+    { path: '/about', label: 'About Us' },
   ];
 
   const userLinks = isAdmin
