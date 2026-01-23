@@ -11,7 +11,7 @@ class DatabaseSetup {
       host: process.env.DB_HOST || 'localhost',
       user: process.env.DB_USER || 'root',
       password: process.env.DB_PASSWORD || '',
-      port: process.env.DB_PORT || 3306
+      port: process.env.DB_PORT || 3308
     };
     this.dbName = process.env.DB_NAME || 'dishcovery';
     this.connection = null;
@@ -107,12 +107,10 @@ class DatabaseSetup {
         image_url VARCHAR(500),
         calories INT,
         preparation_time INT,
-        ingredients JSON,
-        tags JSON,
         is_available BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FULLTEXT idx_dish_search (name, description, tags),
+        FULLTEXT idx_dish_search (name, description),
         INDEX idx_restaurant (restaurant_id),
         INDEX idx_category (category),
         INDEX idx_price (price),
@@ -308,22 +306,22 @@ class DatabaseSetup {
       (4, 3, 'owner');`,
 
       // Insert sample dishes
-      `INSERT IGNORE INTO dishes (restaurant_id, name, description, price, category, is_vegetarian, is_spicy, tags) VALUES
-      (1, 'Margherita Pizza', 'Classic tomato, fresh mozzarella, basil', 14.99, 'Pizza', TRUE, FALSE, '["pizza", "italian", "cheese", "vegetarian"]'),
-      (1, 'Spaghetti Carbonara', 'Pasta with eggs, pecorino cheese, pancetta', 16.50, 'Pasta', FALSE, FALSE, '["pasta", "italian", "bacon", "creamy"]'),
-      (1, 'Tiramisu', 'Coffee-flavored Italian dessert', 8.99, 'Dessert', TRUE, FALSE, '["dessert", "coffee", "italian", "sweet"]'),
-      (2, 'Salmon Sushi Roll', 'Fresh salmon with avocado and cucumber', 12.99, 'Sushi', FALSE, FALSE, '["sushi", "japanese", "salmon", "seafood"]'),
-      (2, 'Tempura Udon', 'Hot noodle soup with tempura shrimp', 14.50, 'Noodles', FALSE, FALSE, '["noodles", "japanese", "soup", "shrimp"]'),
-      (2, 'Miso Soup', 'Traditional Japanese soup', 3.99, 'Soup', TRUE, FALSE, '["soup", "japanese", "miso", "vegetarian"]'),
-      (3, 'Butter Chicken', 'Creamy tomato curry with tender chicken', 18.99, 'Curry', FALSE, TRUE, '["curry", "indian", "chicken", "spicy"]'),
-      (3, 'Vegetable Biryani', 'Spiced rice with mixed vegetables', 15.50, 'Rice Dish', TRUE, TRUE, '["rice", "indian", "vegetarian", "spicy"]'),
-      (3, 'Garlic Naan', 'Soft bread with garlic butter', 3.99, 'Bread', TRUE, FALSE, '["bread", "indian", "garlic", "vegetarian"]'),
-      (4, 'Beef Tacos', 'Three soft tacos with seasoned beef', 11.99, 'Tacos', FALSE, TRUE, '["tacos", "mexican", "beef", "spicy"]'),
-      (4, 'Guacamole', 'Fresh avocado dip with chips', 7.99, 'Appetizer', TRUE, FALSE, '["appetizer", "mexican", "avocado", "vegetarian"]'),
-      (4, 'Churros', 'Cinnamon sugar pastries', 5.99, 'Dessert', TRUE, FALSE, '["dessert", "mexican", "cinnamon", "sweet"]'),
-      (5, 'Croissant', 'Freshly baked butter croissant', 3.50, 'Pastry', TRUE, FALSE, '["pastry", "french", "breakfast", "vegetarian"]'),
-      (5, 'Quiche Lorraine', 'Savory pie with bacon and cheese', 9.99, 'Main Course', FALSE, FALSE, '["pie", "french", "savory", "bacon"]'),
-      (5, 'Creme Brulee', 'Classic French dessert', 7.99, 'Dessert', TRUE, FALSE, '["dessert", "french", "custard", "sweet"]');`,
+      `INSERT IGNORE INTO dishes (restaurant_id, name, description, price, category, is_vegetarian, is_spicy) VALUES
+      (1, 'Margherita Pizza', 'Classic tomato, fresh mozzarella, basil', 14.99, 'Pizza', TRUE, FALSE),
+      (1, 'Spaghetti Carbonara', 'Pasta with eggs, pecorino cheese, pancetta', 16.50, 'Pasta', FALSE, FALSE),
+      (1, 'Tiramisu', 'Coffee-flavored Italian dessert', 8.99, 'Dessert', TRUE, FALSE),
+      (2, 'Salmon Sushi Roll', 'Fresh salmon with avocado and cucumber', 12.99, 'Sushi', FALSE, FALSE),
+      (2, 'Tempura Udon', 'Hot noodle soup with tempura shrimp', 14.50, 'Noodles', FALSE, FALSE),
+      (2, 'Miso Soup', 'Traditional Japanese soup', 3.99, 'Soup', TRUE, FALSE),
+      (3, 'Butter Chicken', 'Creamy tomato curry with tender chicken', 18.99, 'Curry', FALSE, TRUE),
+      (3, 'Vegetable Biryani', 'Spiced rice with mixed vegetables', 15.50, 'Rice Dish', TRUE, TRUE),
+      (3, 'Garlic Naan', 'Soft bread with garlic butter', 3.99, 'Bread', TRUE, FALSE),
+      (4, 'Beef Tacos', 'Three soft tacos with seasoned beef', 11.99, 'Tacos', FALSE, TRUE),
+      (4, 'Guacamole', 'Fresh avocado dip with chips', 7.99, 'Appetizer', TRUE, FALSE),
+      (4, 'Churros', 'Cinnamon sugar pastries', 5.99, 'Dessert', TRUE, FALSE),
+      (5, 'Croissant', 'Freshly baked butter croissant', 3.50, 'Pastry', TRUE, FALSE),
+      (5, 'Quiche Lorraine', 'Savory pie with bacon and cheese', 9.99, 'Main Course', FALSE, FALSE),
+      (5, 'Creme Brulee', 'Classic French dessert', 7.99, 'Dessert', TRUE, FALSE);`,
 
       // Insert sample reviews
       `INSERT IGNORE INTO reviews (restaurant_id, user_id, user_name, comment, rating) VALUES

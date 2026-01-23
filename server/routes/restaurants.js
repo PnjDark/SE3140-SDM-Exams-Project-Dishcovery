@@ -14,7 +14,7 @@ router.get('/', async (req, res) => {
     
     // Only show approved restaurants to customers by default
     if (includeAll !== 'true') {
-      query += ' WHERE status = "approved"';
+      query += ' WHERE is_approved = TRUE';
     }
     
     query += ' ORDER BY rating DESC';
@@ -42,7 +42,7 @@ router.get('/:id', async (req, res) => {
     const { id } = req.params;
 
     const [rows] = await promisePool.execute(
-      'SELECT * FROM restaurants WHERE id = ? AND status = "approved"',
+      'SELECT * FROM restaurants WHERE id = ? AND is_approved = TRUE',
       [id]
     );
 
@@ -85,7 +85,7 @@ router.get('/:id/dishes', async (req, res) => {
 
     // First verify restaurant is approved
     const [restaurant] = await promisePool.execute(
-      'SELECT id FROM restaurants WHERE id = ? AND status = "approved"',
+      'SELECT id FROM restaurants WHERE id = ? AND is_approved = TRUE',
       [id]
     );
 
@@ -120,19 +120,19 @@ router.get('/stats/home', async (req, res) => {
   try {
 
     const [[restaurants]] = await promisePool.execute(
-      'SELECT COUNT(*) total FROM restaurants WHERE status = "approved"'
+      'SELECT COUNT(*) total FROM restaurants WHERE is_approved = TRUE'
     );
 
     const [[reviews]] = await promisePool.execute(
-      'SELECT COUNT(*) total FROM reviews r JOIN restaurants rest ON r.restaurant_id = rest.id WHERE rest.status = "approved"'
+      'SELECT COUNT(*) total FROM reviews r JOIN restaurants rest ON r.restaurant_id = rest.id WHERE rest.is_approved = TRUE'
     );
 
     const [[rating]] = await promisePool.execute(
-      'SELECT AVG(r.rating) avg FROM reviews r JOIN restaurants rest ON r.restaurant_id = rest.id WHERE rest.status = "approved"'
+      'SELECT AVG(r.rating) avg FROM reviews r JOIN restaurants rest ON r.restaurant_id = rest.id WHERE rest.is_approved = TRUE'
     );
 
     const [top] = await promisePool.execute(
-      'SELECT * FROM restaurants WHERE status = "approved" ORDER BY rating DESC LIMIT 3'
+      'SELECT * FROM restaurants WHERE is_approved = TRUE ORDER BY rating DESC LIMIT 3'
     );
 
     res.json({
@@ -171,7 +171,7 @@ router.post('/:id/reviews', async (req, res) => {
 
     // Verify restaurant exists and is approved
     const [restaurant] = await promisePool.execute(
-      'SELECT id FROM restaurants WHERE id = ? AND status = "approved"',
+      'SELECT id FROM restaurants WHERE id = ? AND is_approved = TRUE',
       [id]
     );
 
@@ -317,7 +317,7 @@ router.post('/:id/follow', async (req, res) => {
 
     // Check if restaurant exists and is approved
     const [restaurant] = await promisePool.execute(
-      'SELECT id FROM restaurants WHERE id = ? AND status = "approved"',
+      'SELECT id FROM restaurants WHERE id = ? AND is_approved = TRUE',
       [id]
     );
 
